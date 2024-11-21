@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="stylesheet" href="proposal.css">
+    <link rel="icon" type="image/svg+xml" href="docs.svg">
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo left">
+                <img src="LSPU.png" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="CCS.png" alt="CSS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <div class="menu" id="menu">
+        <ul>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            <li><a href="main.html"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="proposal_view.html"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="archive.html"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="account.html"><i class="fas fa-user"></i> Account</a></li>
+        </ul>
+    </div> 
+    
+    <div class="content">
+        <div class="upload-container">
+            <label for="file-upload" class="upload-button">
+                <ion-icon name="add-outline"></ion-icon> Add Files
+            </label>
+            <input id="file-upload" type="file" multiple style="display:none">
+            <div id="file-list" class="file-list">
+                <!-- Dynamically populated with JavaScript -->
+            </div>
+        </div>
+    </div>    
+
+    <!-- Popup -->
+    <div id="popup" class="popup">
+        <button onclick="openFile()">Open File</button>
+        <button onclick="deleteFile()">Delete</button>
+    </div>
+
+    <script src="https://unpkg.com/ionicons@5.4.0/dist/ionicons.js"></script>
+    <script src="proposals.js"></script>
+</body>
+</html>
