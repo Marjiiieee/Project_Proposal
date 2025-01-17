@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+    <head>
+        <meta charset="="UTF-8>
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-sca;e=1.0">
+
+        <title>PropEase</title> 
+        <link rel="stylesheet" href="account.css"> 
+    </head>
+    
+    <body>
+        <header class="header">
+            <div class="header-container">
+                <div class="logo">
+                    <img src="/Users/Shino/Documents/02 Thesis System/Paperless System/System/logos.png" alt="University Logo">
+                </div>
+                <div class="header-title">
+                    <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                    <h2>College of Computer Studies</h2>
+                    <h3>A.Y. 2023-2024</h3>
+                </div>
+            </div>
+        </header>
+
+        <input type="checkbox" id="menu-toggle" class="menu-toggle">
+        <label for="menu-toggle" class="menu-icon">&#9776;</label>
+
+        <div class="menu">
+            <ul>
+                <li><a href="home.html">Home</a></li>
+                <li><a href="proposal.html">Proposals</a></li>
+                <li><a href="archive.html">Archive</a></li>
+                <li><a href="account.html">Account</a></li>
+            </ul>
+
+            <div class="auth-buttons">
+                <button class="signup-btn"><a href="main.html">log out</a></button>
+            </div>
+        </div>
+        
+        <div class="content">
+            <h1><span>PropEase</span></h1>
+            <div class="form">
+                <p>Name: <span id="name"></span></p>
+                <p>Email: <span id="email"></span></p>
+                <p>Password: <span id="password"></span></p> 
+            </div>
+        </div>
+        <script src="server.js"></script>
+    </body>
+ </html>
+
