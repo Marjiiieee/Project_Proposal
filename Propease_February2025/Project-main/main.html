@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="docs.svg">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        /* Header */
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .logo {
+            position: absolute; 
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%); /* Center if needed */
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%); /* Center if needed */
+        }
+        .header .logo.left img {
+            width: 80px; 
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px; 
+            height: 100px; 
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1; 
+        }
+        .header-title h1 {
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .header-title h2 {
+            margin: 0px;
+            font-size: 20px;
+        }
+        .header-title h3 {
+            margin: 5px 0;
+            font-size: 15px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        /* Menu */
+        .menu-icon {
+            font-size: 30px;
+            cursor: pointer;
+            position: fixed;
+            top: 20px;
+            left: 20px; 
+            color: #51087E;
+            opacity: .5;
+            transition: opacity 0.3s; 
+        }
+        .menu {
+            position: absolute; 
+            top: 103.5px; 
+            left: -300px; /* Start hidden off-screen */
+            width: 150px; 
+            height: 490px;
+            background-color: #E5BAFF;
+            padding: 10px;
+            box-sizing: border-box; 
+            color: #51087E;
+            z-index: 1001;
+            transition: left 0.4s ease; 
+        }
+        .menu-icon:hover + .menu {
+            left: 0; 
+        }
+        .menu ul {
+            list-style-type: none;
+            padding: 0;   
+        }
+        .menu ul li {
+            margin: 5px; /* Adjusted vertical spacing */
+            margin-left: 3px;  
+            margin-top: 30px;  
+        }
+        .menu ul li a {
+            text-decoration: none;
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex; 
+            align-items: center; 
+            padding: 5px; 
+            transition: color 0.4s;
+        }
+        .menu ul li a:hover {
+            color: #DA9CFF; 
+        }
+        .menu ul li a i {
+            margin-right: 5px; 
+            font-size: 18px; 
+        }
+
+        /* PropEase title */
+        .content span {
+            color: #51087E; 
+            font-size: 60px;
+            font-weight: bold;
+            font-family: 'Comfortaa', sans-serif;
+            margin-top: 0;
+        }
+        /* PropEase paragraph */
+        .content {
+            width: auto;
+            height: auto;
+            margin: auto;
+            margin-top: 0px;
+            margin-left: 200px;
+            position: relative;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 18px;
+            letter-spacing: 1.2px;
+            line-height: 1.5;
+            color: #090909;
+            z-index: 1;
+        }
+        /* Logo Background Content */
+        .content::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 60px;
+            background-image: url('CCS.png');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 630px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+        .content .cn a {
+            text-decoration: none;
+            color: #51087E;
+            transition: 0.3s ease;
+        }
+        .cn:hover {
+            background-color: #E5BAFF;
+        }
+
+        /* Log-In Form Box*/
+        .form {
+            width: 250px;
+            height: 300px;
+            background-color: #E5BAFF;
+            position: absolute;
+            top: 20px;
+            left: 590px;
+            bottom: 50px;
+            border-radius: 15px;
+            box-shadow: 0 8px 10px rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            display: grid; 
+            place-items: center; 
+        }
+        /* Log-In Form  Title*/
+        .form h2 {
+            width: 245px;
+            font-family: 'Comfortaa', sans-serif;
+            text-align: center;
+            color: #51087E;
+            font-size: 20px;
+            font-weight: normal; /* This will set the font weight to normal */
+            background-color: #DA9CFF;
+            border-radius: 10px;
+            margin: auto;
+            margin-left: 1px;
+            padding: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        /* Log-In Form Inputs */
+        .form input {
+            background: #f7eaff 80%;
+            width: 250px;
+            height: 40px;
+            border-top: none;
+            border-bottom: 1px solid #725483;
+            border-right: none;
+            border-left: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            margin-left: 0px;
+            color: #090909;
+            font-size: 15px;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 1px; 
+        
+        }
+        .form input:focus {
+            outline: none;
+        }
+        /* Log-In Form Placeholder*/
+        ::placeholder {
+            color: #697565;
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            padding-left: 5px; /* Adjust the padding to move the placeholder to the left */
+        }
+        /*Log-In Form Login Button*/
+        .btnn {
+            width:  255px;
+            height: 40px;
+            background: #DA9CFF;
+            border: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            margin-left: 0px;
+            margin-right: 5px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 20px;
+            font-weight: bold; /* Set the font to bold */
+            color: #51087E;
+            cursor: pointer;
+            transition: 0.10s ease;
+            place-content: center;
+        }
+        .btnn:hover {
+            background: #E5BAFF;
+        }
+        .btnn a {
+            text-decoration: none;
+            color: #51087E;
+            transition: 0.3s ease;
+        }
+        /*Sign-Up Link*/
+        .form .link {
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 15px;
+            padding-top: 5px;
+            text-align: center;
+        }
+        .form .link a {
+            text-decoration: none;
+            color: #51087E;
+        }
+        .form .link a:hover{
+            color: #DA9CFF;
+        }
+
+        /*di ko alam para saan
+        .liw {
+            padding-top: 15px;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        */
+
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo left">
+                <img src="LSPU.png" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="CCS.png" alt="CSS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <div class="menu" id="menu">
+        <ul>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            <li><a href="#"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="#"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="#"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="#"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="signin.html"><i class="fas fa-user-plus"></i> Sign-Up</a></li>
+        </ul>
+    </div>    
+    
+    <div class="content">
+        <h1><span>PropEase</span></h1>
+        
+        <p class="p">
+            Welcome to PropEase, the place where academic topic <br>
+            proposal matching creativity and productivity meet! <br>
+            Say goodbye to difficult paperwork and welcome to an <br>
+            intelligent, simplified approach that will completely <br>
+            transform the way subjects are suggested and paired. <br>
+            Our platform is to help learners, and instructors <br>
+            with ideal project subjects in a paperless setting.<br>
+            It has never been easier to locate the perfect<br>
+            topic recommendations for topic proposals. <br>
+        </p>
+        
+        <div class="form">
+            <h2>Log In Here</h2>
+            <form id="login-form" action="/login" method="POST">
+                <!-- Added a label for accessibility -->
+                <label for="email" class="sr-only">Email Address</label>
+                <input type="email" id="email" name="email" placeholder="Enter Email" required>
+                
+                <!-- Added a label for accessibility -->
+                <label for="password" class="sr-only">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter Password" required>
+                
+                <!-- Button remains unchanged -->
+                <button class="btnn" type="submit">Login</button>
+            </form>
+                                         
+            <p class="link">Don't have an account?<br>
+                <a href="signin.html">Sign Up Here</a>
+            </p>
+        </div> 
+    </div>
+
+    <script src="server.js"></script>   
+</body>
+</html>
