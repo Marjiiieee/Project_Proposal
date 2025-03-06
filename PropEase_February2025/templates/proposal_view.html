@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>PropEase - Proposal</title>
+  <link rel="icon" type="image/svg+xml" href="docs.svg" />
+  <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet" />
+  <style>
+    body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        justify-content: center; /* Center horizontally */
+        align-items: center; /* Center vertically */
+        overflow: hidden; /* Prevents scrolling in the entire page */
+    }
+    /* Header */
+    .header {
+        background-color: #da9cff;
+        color: #51087e;
+        padding: 2px 0;
+        text-align: center;
+        height: 100px;
+        margin-bottom: 0;
+        margin-top: 0;
+    }
+    .header-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between; /* Changed to space-between for left/right logos */
+        position: relative;
+        padding: 0 50px;
+    }
+    .logo {
+        position: absolute;
+    }
+    .logo.left {
+        left: 15%;
+        top: 12px;
+        transform: translateX(-50%); /* Center if needed */
+    }
+    .logo.right {
+        right: 15%;
+        top: 0px;
+        transform: translateX(50%); /* Center if needed */
+    }
+    .header .logo.left img {
+        width: 80px;
+        height: auto;
+    }
+    .header .logo.right img {
+        width: 100px;
+        height: 100px;
+    }
+    .header-title {
+        text-align: center;
+        flex-grow: 1;
+    }
+    .header-title h1 {
+        margin: 10px 0;
+        font-size: 20px;
+    }
+    .header-title h2 {
+        margin: 0px;
+        font-size: 20px;
+    }
+    .header-title h3 {
+        margin: 5px 0;
+        font-size: 15px;
+    }
+    .title h1,.title h2 {
+        margin: 0;
+    }
+    /* Menu */
+    .menu {
+        position: fixed;
+        top: 103.5px;
+        left: -300px;
+        width: 150px;
+        height: 490px;
+        background-color: #e5baff;
+        padding: 10px;
+        box-sizing: border-box;
+        color: #51087e;
+        z-index: 1001;
+        transition: left 0.4s ease;
+    }
+
+    .menu.open {
+        left: 0;
+    }
+
+    .menu-icon {
+        font-size: 30px;
+        cursor: pointer;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        color: #51087e;
+        opacity: 0.5;
+        transition: opacity 0.3s;
+    }
+
+    .menu ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .menu ul li {
+        margin: 30px 3px 5px;
+    }
+
+    .menu ul li a {
+        text-decoration: none;
+        color: #51087e;
+        font-family: "Comfortaa", sans-serif;
+        font-weight: bold;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        padding: 5px;
+        transition: color 0.4s;
+    }
+
+    .menu ul li a:hover {
+        color: #da9cff;
+    }
+
+    /* Logo Background Content */
+    .content::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        margin-top: 53px;
+        background-image: url("/static/images/CCS.png");
+        background-repeat: no-repeat;
+        background-position: center;
+        background-size: 630px;
+        opacity: 0.2;
+        z-index: -1;
+    }
+    /* Content Area */
+    .content {
+        display: grid;
+        grid-template-columns: 2.5fr 2fr;
+        grid-template-rows: auto auto;
+        gap: 20px;
+        padding: 20px;
+        margin-left: 20px;
+        max-width: 100vw;
+        transition: margin-left 0.4s ease, max-width 0.4s ease;
+        padding-bottom: 20px; /* Adds space below all content */
+    }
+    .menu-open .content {
+      margin-left: 160px;
+    }
+    /* Container for uploaded, speech boxes, plus pop-up */
+    .container {
+        display: flex;
+        justify-content: center;
+        gap: 20px; /* Space between boxes */
+        align-items: flex-start; /* Prevents height stretching */
+        flex-wrap: wrap; /* Ensures proper spacing */
+        margin-top: 10px; /* space below header */
+        row-gap: 10px; /* space of footer */
+        }
+    .menu-open .container {
+        margin-left: 160px; /* Moves right when menu opens */
+        transition: margin-left 0.4s ease; /* Smooth animation */
+    }
+    /* Uploaded File and Speech to Text Box */
+    .uploaded, .speech {
+        background-color: #e5baff;
+        border-radius: 20px;
+        padding: 10px;
+        position: relative;
+        width: 500px;
+        height: 450px;
+        overflow-x: hidden;
+        overflow-y: auto;
+        word-break: break-word; /* Ensures long words break */
+        margin-bottom: 20px; /* Adds space below */
+        display: flex;
+        flex-direction: column; /* Keeps content structured */
+    }
+    /* Uploaded Box Content (Text inside the Uploaded Box) */
+    .uploaded-content, .speech-content {
+        text-align: justify;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: pre-wrap;
+        max-width: 100%;
+        flex-grow: 1; /* Allows content to take available space */
+        overflow-y: auto; /* Enables vertical scrolling only */
+        padding-right: 10px; /* Adjusts for scrollbar */
+    }
+/*
+Scrollbar 
+.uploaded::-webkit-scrollbar, .speech::-webkit-scrollbar {
+    width: 10px; Adjust width 
+}
+.uploaded::-webkit-scrollbar-track, .speech::-webkit-scrollbar-track {
+    background: gray; Make track invisible 
+    margin-top: 10px; Helps blend the top 
+    margin-bottom: 10px; Helps blend the bottom 
+    
+    Curving the track edges 
+    border-radius: 20px; 
+}
+/* Scrollbar Thumb (Draggable part) 
+.uploaded::-webkit-scrollbar-thumb, .speech::-webkit-scrollbar-thumb {
+    background: #d6d6d6; Your previous gray color 
+    border-radius: 10px; Makes the edges rounded 
+}
+/* Scrollbar Thumb on Hover 
+.uploaded::-webkit-scrollbar-thumb:hover, .speech::-webkit-scrollbar-thumb:hover {
+    background: #c9c9c9;
+}
+*/
+    .mic-button {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #51087e; /* Match theme */
+        color: white;
+        border: none;
+        padding: 5px 7px; /* Decrease padding */
+        border-radius: 50%; /* Keeps it circular */
+        cursor: pointer;
+        font-size: 14px; /* Reduce icon size */
+        width: 30px; /* Define fixed width */
+        height: 30px; /* Define fixed height */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .mic-button:hover {
+        background-color: #7a1ea1;
+    }
+    /* Results Button */
+    .results-button {
+        position: fixed; /* Keeps it in place even when scrolling */
+        bottom: 20px; /* Distance from the bottom */
+        right: 10px; /* Distance from the right */
+        background-color: #51087e;
+        border: none;
+        padding: 10px 15px;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-family: "Comfortaa", sans-serif;
+        font-size: 10px;
+        cursor: pointer;
+        border: none;
+    }
+    .results-button:hover {
+        background-color: #7a1ea1;
+    }
+    /* Pop-up Box */
+    .pop-up {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex; /* Ensure visibility */
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    /* Pop-up List */
+    .popup-list {
+      list-style-type: none;
+      text-align: left;
+      padding: 5px 0;
+      margin: 0;
+    }
+    /* Once Pop-up / bg */
+    .pop-up {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    /* Close Button */
+    .close-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 20px;
+      cursor: pointer;
+      color: #51087e;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-container">
+      <div class="logo left">
+        <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo" />
+      </div>
+      <div class="header-title">
+        <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+        <h2>College of Computer Studies</h2>
+        <h3>A.Y. 2023-2024</h3>
+      </div>
+      <div class="logo right">
+        <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CSS Logo" />
+      </div>
+    </div>
+  </header>
+
+  <div class="menu-icon" onclick="toggleMenu()">☰</div>
+  <div class="menu" id="menu">
+    <ul>
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+      <li><a href="home.html"><i class="fa-solid fa-house"></i> Home</a></li>
+      <li><a href="proposal_upload.html"><i class="fas fa-file-alt"></i> Proposals</a></li>
+      <li><a href="archive.html"><i class="fas fa-archive"></i> Archive</a></li>
+      <li><a href="account.html"><i class="fas fa-user"></i> Account</a></li>
+      <li><a href="main.html"><i class="fa-solid fa-right-from-bracket"></i> Log Out</a></li>
+    </ul>
+  </div>
+
+    <div class="container">
+        <div class="uploaded" id="file-view">
+            {% if extracted_text %}
+                <div id="extracted-text">
+                    <h3>Extracted Text:</h3>
+                    <pre>{{ extracted_text | safe }}</pre>
+                </div>
+            {% else %}
+                <div id="extracted-text">
+                    <p>No extracted text available.</p>
+                </div>
+            {% endif %}
+        </div>
+
+        <div class="speech">
+            <button class="mic-button" onclick="toggleSpeechToText()">
+            <i class="fa fa-microphone"></i>
+            </button>
+        </div>
+
+        <button class="results-button" onclick="togglePopup()">Results</button>
+
+        <div id="pop-up" class="pop-up">
+        <div class="popup-box">
+          <span class="close-button" onclick="closePopup()">×</span>
+            <h3>Title Recommendations</h3>
+              <ul class="popup-list">
+                <li>Title 1:</li>
+                <li>Title 2:</li>
+                <li>Title 3:</li>
+              </ul>
+          </div>
+      </div>
+  </div>
+
+  <script>
+    // TOGGLE MENU
+    // Open menu when clicked
+    function toggleMenu() {
+        const menu = document.getElementById('menu');
+        const body = document.body;
+
+        menu.classList.toggle('open');
+        body.classList.toggle('menu-open'); // Add class to shift container
+    }
+    // Close menu when clicking outside
+    document.addEventListener('click', function(event) {
+        const menu = document.getElementById('menu');
+        const icon = document.querySelector('.menu-icon');
+
+        if (!menu.contains(event.target) && !icon.contains(event.target) && menu.classList.contains('open')) {
+            menu.classList.remove('open');
+        }
+    });
+
+    // SPEECH RECOGNITION
+    // Speech Recognition Setup
+const speechBox = document.querySelector(".speech");
+const micButton = document.getElementById("mic-button"); // Ensure this matches your button ID
+const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+recognition.continuous = true; // Keep listening
+recognition.interimResults = false;
+recognition.lang = "en-US";
+
+let isListening = false; // Track if listening
+
+// Toggle Speech Recognition
+function toggleSpeechToText() {
+    if (!isListening) {
+        recognition.start();
+        isListening = true;
+        micButton.textContent = "Stop"; // Change button text
+    } else {
+        recognition.stop();
+        isListening = false;
+        micButton.textContent = "Start"; // Reset button text
+    }
+}
+
+// Append Recognized Speech
+recognition.onresult = function (event) {
+    const transcript = event.results[event.results.length - 1][0].transcript;
+    const speechContent = document.createElement("p");
+    speechContent.textContent = transcript;
+    speechBox.appendChild(speechContent);
+};
+
+// Restart Recognition Automatically if Stopped Unexpectedly
+recognition.onend = function () {
+    if (isListening) {
+        recognition.start();
+    }
+};
+
+// Handle Errors
+recognition.onerror = function (event) {
+    console.error("Speech Recognition Error:", event.error);
+    alert("Speech recognition failed. Please check your microphone permissions.");
+};
+
+    // POP-UP
+    // Get Pop-Up Elements
+    const popup = document.getElementById("pop-up");
+    const closeButton = document.querySelector(".close-button");
+
+    // Show Pop-Up
+    function togglePopup() {
+      var popup = document.getElementById("popup");
+      popup.style.display = popup.style.display === "flex" ? "none" : "flex";
+    }
+    // Close Pop-Up
+    function closePopup() {
+        popup.style.display = "none"; 
+    }
+    // Close Pop-Up When Clicking Outside
+    popup.addEventListener("click", function (event) {
+        if (event.target === popup) {
+            closePopup(); 
+        }
+    });
+  </script>
+</body>
+</html>
