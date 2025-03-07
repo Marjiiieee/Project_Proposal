@@ -71,6 +71,10 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+@app.route("/")
+def main():
+    return render_template("main.html")
+
 # Home Route - Main Dashboard
 @app.route('/home')
 @login_required
@@ -165,7 +169,10 @@ def proposal_upload():
             return jsonify({"status": "error", "message": "No selected file"}), 400
 
         if file and allowed_file(file.filename):
-            ext = file.filename.rsplit('.', 1)[1].lower()
+            # Get the original filename
+            original_filename = secure_filename(file.filename)
+            # Create unique filename for storage
+            ext = original_filename.rsplit('.', 1)[1].lower()
             unique_filename = f"{uuid.uuid4().hex}.{ext}"
             secure_name = secure_filename(unique_filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], secure_name)
@@ -236,7 +243,7 @@ if hasattr(vectorizer, "vocabulary_") and vectorizer.vocabulary_:
 else:
     print("Vectorizer is NOT fitted. You need to train it.")
 
-#Proposal View
+
 import time
 
 @app.route('/upload_proposal', methods=['POST'])
@@ -369,21 +376,30 @@ def toggle_menu():
 
 from flask import send_from_directory, jsonify, session, request
 
-@app.route('/view_proposal/<int:file_id>')
+@app.route('/proposal_view/<int:file_id>')
 @login_required
-def view_proposal(file_id):
+def proposal_view(file_id):
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT file_path, extracted_text FROM files WHERE id = %s AND user_email = %s", (file_id, session['user_email']))
+    
+    # Fetch file details based on the logged-in user
+    cursor.execute("SELECT file_path, extracted_text FROM files WHERE id = %s AND user_email = %s", 
+                   (file_id, session['user_email']))
+    
     file_record = cursor.fetchone()
+    
     cursor.close()
     conn.close()
 
     if file_record:
-        return render_template('proposal_view.html', text=file_record['extracted_text'])
+        extracted_text = file_record.get('extracted_text', '')  # Ensure it’s not None
+        print("Extracted Text:", extracted_text)  # Debugging
+
+        return render_template('proposal_view.html', extracted_text=extracted_text)
     else:
         flash("File not found or access denied", "error")
         return redirect(url_for('proposal_upload'))
+
 
 @app.route('/uploaded_file', methods=['GET'])
 @app.route('/uploaded_file/<filename>', methods=['GET'])
