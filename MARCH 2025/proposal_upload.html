@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/docs.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center;
+            align-items: center;
+        }
+        /* Header */
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+            position: fixed; /* Make header fixed */
+            width: 100%; /* Ensure it spans full width */
+            top: 0; /* Stick to top */
+            left: 0; /* Align to left edge */
+            z-index: 1002; /* Ensure header stays above other content */
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .logo {
+            position: absolute;
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%);
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%);
+        }
+        .header .logo.left img {
+            width: 80px;
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px;
+            height: 100px;
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1;
+        }
+        .header-title h1{
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .header-title h2{
+            margin: 0px; 
+            font-size: 20px;
+        }
+        .header-title h3{
+            margin: 5px 0; 
+            font-size: 15px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        /* Menu */
+        /* Menu */
+        .menu-icon {
+            font-size: 30px;
+            cursor: pointer;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #51087E;
+            opacity: .8;
+            transition: opacity 0.3s;
+            z-index: 2000; /* Ensure it's above content */
+        }
+
+        .menu {
+            position: fixed;
+            top: 100px; /* Position right below the fixed header */
+            left: -250px; /* Hidden by default */
+            width: 170px;
+            height: calc(100% - 100px); /* Adjust height dynamically */
+            background-color: #E5BAFF;
+            padding: 10px;
+            box-sizing: border-box;
+            color: #51087E;
+            z-index: 1001;
+            transition: left 0.4s ease;
+            overflow-y: auto; /* Scrollable if needed */
+        }
+
+        .menu-icon:hover + .menu {
+            left: 0; 
+        }
+
+        .menu.show {
+            left: 0;
+        }
+
+        .menu-icon:hover {
+            opacity: 1;
+        }
+
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .menu ul li {
+            margin: 20px 10px; /* Adjusted vertical spacing */
+            margin-left: 3px;  
+            margin-top: 30px;  
+        }
+        .menu ul li a {
+            text-decoration: none;
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            transition: color 0.3s;
+        }
+
+        .menu ul li a:hover {
+            color: #DA9CFF; 
+        }
+        .menu ul li a i {
+            margin-right: 5px; 
+            font-size: 18px; 
+        }
+
+        /* Logo Background Content */
+        .content::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 60px;
+            background-image: url("{{ url_for('static', filename='images/CCS.png') }}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 630px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+
+        /* Content Layout */
+        .content {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start; /* Align items to the top */
+            height: calc(100vh - 100px);
+            padding: 50px 0 0 200px; /* Adjusted padding for positioning */
+            gap: 20px; /* Add space between the upload container and file list */
+            margin-top: 100px; /* Add margin equal to header height */
+        }
+
+        /* Upload Container */
+        .upload-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100px; /* Fixed width */
+            height: 120px; /* Fixed height */
+            border: 2px dashed #51087E;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+        /* Uploaded File List Container */
+        #file-list {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+            align-items: flex-start;
+            flex-wrap: wrap; /* Allow wrapping to new lines */
+            max-width: calc(100vw - 300px); /* Limit width to avoid squeezing */
+        }
+
+        .upload-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .upload-button ion-icon {
+            font-size: 30px; /* Increased size of the plus icon */
+            color: #51087E;
+            margin-top: 10px;
+        }   
+
+        .file-bubble {
+            background-color: #E5BAFF;
+            border-radius: 10px;
+            width: 100px; 
+            height: 120px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #51087E;
+            font-size: 30px; 
+        }
+
+        /* Icon inside the file bubble */
+        .file-icon {
+            font-size: 30px;
+        }
+
+        /* File caption below the bubble */
+        .file-caption {
+            text-align: center;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 12px;
+            color: #51087E;
+            margin-top: 5px;
+            word-break: break-word; /* Break long words onto the next line */
+            max-width: 100px; /* Set max width to control wrapping within the bubble */
+            line-height: 1.2; /* Adjust line spacing */
+            white-space: normal; /* Allow text to wrap onto multiple lines */
+        }
+                    /* Responsive Design */
+                    @media (max-width: 768px) {
+            .menu {
+                width: 200px;
+            }
+            .menu ul li a {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .menu {
+                width: 180px;
+            }
+            .menu ul li {
+                margin: 15px 5px;
+            }
+            .menu ul li a {
+                font-size: 14px;
+            }
+        }
+
+        .file-bubble-container {
+            position: relative;
+            margin: 3px;
+        }
+
+        .file-options-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #51087E;
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .file-options-menu {
+            position: absolute;
+            top: 25px;
+            right: 5px;
+            background: white;
+            border: 1px solid #E5BAFF;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 3;
+        }
+
+        .file-options-menu.show {
+            display: block;
+        }
+
+        .file-options-menu button {
+            display: block;
+            width: 100%;
+            padding: 8px 15px;
+            border: none;
+            background: none;
+            text-align: left;
+            cursor: pointer;
+            color: #51087E;
+        }
+
+        .file-options-menu button:hover {
+            background-color: #E5BAFF;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #51087E;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 1000;
+            animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+        }
+
+        @keyframes fadeIn {
+            from {opacity: 0;}
+            to {opacity: 1;}
+        }
+
+        @keyframes fadeOut {
+            from {opacity: 1;}
+            to {opacity: 0;}
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo left">
+                <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CCS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <div class="menu" id="menu">
+        <ul>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            <li><a href="{{ url_for('home') }}"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="{{ url_for('proposal_upload') }}"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="{{ url_for('archive') }}"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="{{ url_for('account') }}"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Log Out</a></li>
+        </ul>        
+    </div> 
+
+    <div class="content">
+        <div class="upload-container" onclick="document.getElementById('file-upload').click()">
+            <div class="upload-button">
+                <ion-icon name="add-circle-outline"></ion-icon>
+            </div>
+        </div>
+        <input type="file" id="file-upload" accept=".pdf,.doc,.docx" style="display: none;" multiple onchange="uploadFiles()">
+        
+        <div id="file-list"></div> <!-- File list area -->
+        <div id="upload-status"></div> <!-- Upload status area -->
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            fetchProposals();
+        });
+
+        function fetchProposals() {
+            fetch("{{ url_for('uploaded_file') }}")
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch proposals');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const fileList = document.getElementById('file-list');
+                fileList.innerHTML = ''; // Clear existing files
+
+                data.forEach(proposal => {
+                    // Only create elements for non-archived files
+                    if (!proposal.archived) {
+                        const bubbleContainer = document.createElement('div');
+                        bubbleContainer.className = 'file-bubble-container';
+                        bubbleContainer.setAttribute('data-file-id', proposal.id);
+
+                        const fileBubble = document.createElement('div');
+                        fileBubble.className = 'file-bubble';
+                        fileBubble.innerHTML = `<div class="file-caption">${proposal.file_name}</div>`;
+                        
+                        // Options button
+                        const optionsBtn = document.createElement('button');
+                        optionsBtn.className = 'file-options-btn';
+                        optionsBtn.innerHTML = '⋮';
+                        optionsBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            toggleOptionsMenu(proposal.id);
+                        };
+
+                        // Options menu
+                        const optionsMenu = document.createElement('div');
+                        optionsMenu.className = 'file-options-menu';
+                        optionsMenu.id = `options-menu-${proposal.id}`;
+                        optionsMenu.innerHTML = `
+                            <button onclick="viewFile(${proposal.id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button onclick="archiveFile(${proposal.id})">
+                                <i class="fas fa-archive"></i> Move to Archive
+                            </button>
+                        `;
+
+                        bubbleContainer.appendChild(fileBubble);
+                        bubbleContainer.appendChild(optionsBtn);
+                        bubbleContainer.appendChild(optionsMenu);
+                        fileList.appendChild(bubbleContainer);
+
+                        fileBubble.onclick = () => viewFile(proposal.id);
+                    }
+                });
+            })
+            .catch(error => console.error("Error fetching proposals:", error));
+        }
+
+        function uploadFiles() {
+            const fileInput = document.getElementById('file-upload');
+            const files = fileInput.files;
+            const fileList = document.getElementById('file-list');
+
+            if (files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch("{{ url_for('proposal_upload') }}", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Create container with data-file-id attribute
+                        const bubbleContainer = document.createElement('div');
+                        bubbleContainer.className = 'file-bubble-container';
+                        bubbleContainer.setAttribute('data-file-id', data.file_id);
+
+                        // Create file bubble
+                        const fileBubble = document.createElement('div');
+                        fileBubble.className = 'file-bubble';
+                        fileBubble.innerHTML = `<div class="file-caption">${file.name}</div>`;
+                        
+                        // Create options button
+                        const optionsBtn = document.createElement('button');
+                        optionsBtn.className = 'file-options-btn';
+                        optionsBtn.innerHTML = '⋮';
+                        optionsBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            toggleOptionsMenu(data.file_id);
+                        };
+
+                        // Create options menu
+                        const optionsMenu = document.createElement('div');
+                        optionsMenu.className = 'file-options-menu';
+                        optionsMenu.id = `options-menu-${data.file_id}`;
+                        optionsMenu.innerHTML = `
+                            <button onclick="viewFile(${data.file_id})">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            <button onclick="archiveFile(${data.file_id})">
+                                <i class="fas fa-archive"></i> Move to Archive
+                            </button>
+                        `;
+
+                        // Append elements
+                        bubbleContainer.appendChild(fileBubble);
+                        bubbleContainer.appendChild(optionsBtn);
+                        bubbleContainer.appendChild(optionsMenu);
+                        fileList.appendChild(bubbleContainer);
+
+                        // Add click event for viewing
+                        fileBubble.onclick = () => viewFile(data.file_id);
+
+                        showToast('File uploaded successfully');
+                    } else {
+                        showToast('Error uploading file');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Error uploading file');
+                });
+            });
+
+            fileInput.value = ''; // Clear the input
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            menu.classList.toggle("active");
+        }
+
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('menu');
+            const icon = document.querySelector('.menu-icon');
+            if (!menu.contains(event.target) && !icon.contains(event.target)) {
+                menu.classList.remove("active");
+            }
+        });
+
+        // Function to toggle the options menu
+        function toggleOptionsMenu(fileId) {
+            // Close all other open menus first
+            const allMenus = document.querySelectorAll('.file-options-menu');
+            allMenus.forEach(menu => {
+                if (menu.id !== `options-menu-${fileId}`) {
+                    menu.classList.remove('show');
+                }
+            });
+
+            // Toggle the clicked menu
+            const menu = document.getElementById(`options-menu-${fileId}`);
+            menu.classList.toggle('show');
+
+            // Add click outside listener
+            document.addEventListener('click', function closeMenu(e) {
+                if (!e.target.closest('.file-options-btn') && !e.target.closest('.file-options-menu')) {
+                    menu.classList.remove('show');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }
+
+        // Function to view file
+        function viewFile(fileId) {
+            window.location.href = `/proposal_view/${fileId}`;
+        }
+
+        // Function to archive file
+        function archiveFile(fileId) {
+            fetch(`/move_to_archive/${fileId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    // Remove the file bubble from the UI
+                    const bubbleContainer = document.querySelector(`[data-file-id="${fileId}"]`);
+                    if (bubbleContainer) {
+                        bubbleContainer.remove();
+                    }
+                    showToast('File moved to archive');
+                } else {
+                    showToast('Error moving file to archive');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error moving file to archive');
+            });
+        }
+
+        // Add toast notification function
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        // Close all menus when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.file-options-btn')) {
+                document.querySelectorAll('.file-options-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+
+        // Function to handle file restoration
+        function handleFileRestoration(fileId) {
+            fetch(`/get_file_details/${fileId}`)
+            .then(response => response.json())
+            .then(file => {
+                if (!file.archived) {
+                    // Refresh the proposals list to show the restored file
+                    fetchProposals();
+                }
+            })
+            .catch(error => console.error("Error handling file restoration:", error));
+        }
+
+        // Add event listener for custom events (for communication between pages)
+        window.addEventListener('fileRestored', function(e) {
+            handleFileRestoration(e.detail.fileId);
+        });
+    </script>
+
+    <script src="https://unpkg.com/ionicons@5.4.0/dist/ionicons.js"></script>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            menu.classList.toggle("show");
+        }
+    </script> 
+</body>
+</html>

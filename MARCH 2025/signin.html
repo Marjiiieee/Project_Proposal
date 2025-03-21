@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/docs.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        /* Header */
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .logo {
+            position: absolute; 
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%); /* Center if needed */
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%); /* Center if needed */
+        }
+        .header .logo.left img {
+            width: 80px; 
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px; 
+            height: 100px; 
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1; 
+        }
+        .header-title h1 {
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .header-title h2 {
+            margin: 0px;
+            font-size: 20px;
+        }
+        .header-title h3 {
+            margin: 5px 0;
+            font-size: 15px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        /* Menu */
+        /* Menu */
+        .menu-icon {
+            font-size: 30px;
+            cursor: pointer;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #51087E;
+            opacity: .8;
+            transition: opacity 0.3s;
+            z-index: 2000; /* Ensure it's above content */
+        }
+
+        .menu {
+            position: fixed;
+            top: 104px; /* Below the header */
+            left: -250px; /* Hidden by default */
+            width: 170px;
+            height: calc(100% - 100px); /* Adjust height dynamically */
+            background-color: #E5BAFF;
+            padding: 10px;
+            box-sizing: border-box;
+            color: #51087E;
+            z-index: 1001;
+            transition: left 0.4s ease;
+            overflow-y: auto; /* Scrollable if needed */
+        }
+
+        .menu-icon:hover + .menu {
+            left: 0; 
+        }
+
+        .menu.show {
+            left: 0;
+        }
+
+        .menu-icon:hover {
+            opacity: 1;
+        }
+
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        
+        .menu ul li {
+            margin: 20px 10px; /* Adjusted vertical spacing */
+            margin-left: 3px;  
+            margin-top: 30px;  
+        }
+        .menu ul li a {
+            text-decoration: none;
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            padding: 5px;
+            transition: color 0.3s;
+        }
+
+        .menu ul li a:hover {
+            color: #DA9CFF; 
+        }
+        .menu ul li a i {
+            margin-right: 5px; 
+            font-size: 18px; 
+        }
+
+        /* PropEase title */
+        .content span {
+            color: #51087E; 
+            font-size: 70px;
+            font-weight: bold;
+            font-family: 'Comfortaa', sans-serif;
+            margin-top: 0;
+        }
+        /* PropEase paragraph */
+        .content {
+            width: 100%;
+            max-width: 1200px;
+            height: auto;
+            margin: 0 auto;
+            padding: 10px;
+            position: relative;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 20px;
+            letter-spacing: 1.2px;
+            line-height: 1.5;
+            color: #090909;
+            z-index: 1;
+            display: flex;
+            justify-content: space-between;
+        }
+        /* Logo Background Content */
+        .content::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 60px;
+            background-image: url("{{ url_for('static', filename='images/CCS.png') }}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 630px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+        .content .cn a {
+            text-decoration: none;
+            color: #51087E;
+            transition: 0.3s ease;
+        }
+        .cn:hover {
+            background-color: #E5BAFF;
+        }
+
+        /* Add a container for the left side content */
+        .content-left {
+            flex: 1;
+            min-width: 300px;
+            padding-right: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Add styles for the form container */
+        .form-container {
+            width: 300px; /* Fixed width for the form section */
+            margin-left: 20px;
+            margin-top: 20px; /* Align with the content below the title */
+        }
+
+        /*Sign-Up Form Box*/
+        .form {
+            width: 100%;
+            max-width: 260px;
+            height: auto;
+            min-height: 300px;
+            background-color: #E5BAFF;
+            position: relative;
+            margin: 10px 0;
+            border-radius: 15px;
+            box-shadow: 0 8px 10px rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-right: 40px; 
+        }
+        /*Sign-Up Form  Title*/
+        .form h2 {
+            width: 245px;
+            font-family: 'Comfortaa', sans-serif;
+            text-align: center;
+            color: #51087E;
+            font-size: 20px;
+            font-weight: normal; /* This will set the font weight to normal */
+            background-color: #DA9CFF;
+            border-radius: 10px;
+            margin: auto;
+            margin-left: 1px;
+            padding: 5px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+        }
+        /*Sign-Up Form Inputs */
+        .form input {
+            background: #f7eaff 80%;
+            width: 250px;
+            height: 40px;
+            border-top: none;
+            border-bottom: 1px solid #725483;
+            border-right: none;
+            border-left: 10px;
+            border-radius: 5px;
+            margin-top: 20px;
+            margin-left: 0px;
+            color: #090909;
+            font-size: 15px;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 1px; 
+        
+        }
+        .form input:focus {
+            outline: none;
+        }
+        /*Sign-Up Form Placeholder*/
+        ::placeholder {
+            color: #697565;
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            padding-left: 5px; /* Adjust the padding to move the placeholder to the left */
+        }
+        /*Log-In Form Login Button*/
+        .btnn {
+            width: 100%;
+            max-width: 255px;
+            height: 40px;
+            background: #51087E;
+            border: none;
+            border-radius: 10px;
+            margin: 15px 0 10px 0; /* Reduced top margin from 20px to 15px */
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffffff;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none !important;
+        }
+        .btnn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        /* Active state when clicked */
+        .btnn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .btnn a {
+            text-decoration: none;
+            color: #51087E;
+            transition: 0.3s ease;
+        }
+        /*Log In Link*/
+        .form .link {
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 15px;
+            padding-top: 5px;
+            text-align: center;
+        }
+        .form .link a {
+            text-decoration: none;
+            color: #51087E;
+        }
+        .form .link a:hover{
+            color: #DA9CFF;
+        }
+                    /* Responsive Design */
+                    @media (max-width: 768px) {
+            .menu {
+                width: 200px;
+            }
+            .menu ul li a {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .menu {
+                width: 180px;
+            }
+            .menu ul li {
+                margin: 15px 5px;
+            }
+            .menu ul li a {
+                font-size: 14px;
+            }
+        }
+        .error-message {
+            color: #ff4444;
+            font-size: 12px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            min-height: 15px;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        .password-requirements {
+            font-size: 12px; /* Reduced from previous size */
+            color: #ff4444; /* Changed to match error color */
+            margin-top: 5px;
+            text-align: left;
+            width: 100%;
+            font-family: 'Comfortaa', sans-serif;
+            display: none; /* Hidden by default */
+        }
+
+        .password-requirements ul {
+            list-style: none;
+            padding-left: 10px;
+            margin: 3px 0;
+        }
+
+        .password-requirements li {
+            margin: 2px 0;
+            font-size: 12px; /* Ensure consistent size */
+        }
+
+        .valid-requirement {
+            color: #28a745;
+        }
+
+        .input-error {
+            border: 1px solid #ff4444 !important;
+            background-color: #fff0f0 !important;
+        }
+
+        .shake {
+            animation: shake 0.5s;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        .password-input-container {
+            position: relative;
+            width: 250px;
+            margin-top: 0px;
+        }
+
+        .password-input-container input {
+            background: #f7eaff 80%;
+            width: 220px;
+            height: 40px;
+            border-top: none;
+            border-bottom: 1px solid #725483;
+            border-right: none;
+            border-left: 10px;
+            border-radius: 5px;
+            padding-right: 30px;
+            color: #090909;
+            font-size: 15px;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #697565;
+        }
+
+        .password-toggle i {
+            font-size: 13px;
+        }
+
+        .password-toggle:hover {
+            color: #51087E;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="logo left">
+                <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CCS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu-icon" onclick="toggleMenu()">☰</div>
+    <div class="menu" id="menu">
+        <ul>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+            <li><a href="#"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="#"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="#"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="#"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="{{ url_for('login') }}"><i class="fas fa-sign-out-alt"></i>Log in</a></li>
+        </ul>
+    </div> 
+    
+    <div class="content">
+        <div class="content-left">
+            <span>PropEase</span>
+            <p class="p">
+                Welcome to PropEase, the place where academic topic <br>
+                proposal matching creativity and productivity meet! <br>
+                Say goodbye to difficult paperwork and welcome to an <br>
+                intelligent, simplified approach that will completely <br>
+                transform the way subjects are suggested and paired. <br>
+                Our platform is to help learners, and instructors <br>
+                with ideal project subjects in a paperless setting.<br>
+                It has never been easier to locate the perfect<br>
+                topic recommendations for topic proposals. <br>
+            </p>
+        </div>
+
+        <div class="form-container">
+            <div class="form">
+                <h2>Sign Up Here</h2>
+                <form id="signup-form" action="/register" method="POST">
+                    <input type="email" id="email" name="email" placeholder="Enter Email" required>
+                    <div class="error-message" id="email-error"></div>
+                    <div class="password-input-container">
+                        <input type="password" id="password" name="password" placeholder="Enter Password" required>
+                        <span class="password-toggle" onclick="togglePasswordVisibility()">
+                            <i class="fas fa-eye"></i>
+                        </span>
+                    </div>
+                    <div class="error-message" id="password-error"></div>
+                    <div class="password-requirements">
+                        Password must contain:
+                        <ul>
+                            <li id="length-check">❌ At least 8 characters</li>
+                            <li id="number-check">❌ At least 2 numbers</li>
+                            <li id="special-check">❌ At least 1 special character</li>
+                        </ul>
+                    </div>
+                    <button class="btnn" type="submit">Sign Up</button>
+                </form>
+                <p class="link">Already have an account?<br>
+                    <a href="{{ url_for('login') }}">Login here</a>
+                </p>
+            </div>
+        </div>
+
+    </div>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            menu.classList.toggle("show");
+        }
+    </script> 
+    <script>
+        const signupForm = document.getElementById('signup-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const emailError = document.getElementById('email-error');
+        const passwordError = document.getElementById('password-error');
+        const passwordRequirements = document.querySelector('.password-requirements');
+
+        function showError(element, errorDiv, message) {
+            element.classList.add('input-error');
+            element.classList.add('shake');
+            errorDiv.textContent = message;
+            setTimeout(() => {
+                element.classList.remove('shake');
+            }, 500);
+        }
+
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById('password');
+            const toggleIcon = document.querySelector('.password-toggle i');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+
+        function validatePassword(password) {
+            const hasLength = password.length >= 8;
+            const hasNumbers = (password.match(/\d/g) || []).length >= 2;
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+            // Show requirements only when password field is focused or has content
+            passwordRequirements.style.display = 'block';
+
+            // Update requirement indicators
+            document.getElementById('length-check').innerHTML = (hasLength ? '✅' : '❌') + ' At least 8 characters';
+            document.getElementById('number-check').innerHTML = (hasNumbers ? '✅' : '❌') + ' At least 2 numbers';
+            document.getElementById('special-check').innerHTML = (hasSpecial ? '✅' : '❌') + ' At least 1 special character';
+
+            // Update colors based on validation
+            document.getElementById('length-check').style.color = hasLength ? '#28a745' : '#ff4444';
+            document.getElementById('number-check').style.color = hasNumbers ? '#28a745' : '#ff4444';
+            document.getElementById('special-check').style.color = hasSpecial ? '#28a745' : '#ff4444';
+
+            return hasLength && hasNumbers && hasSpecial;
+        }
+
+        // Show requirements when password field is focused
+        passwordInput.addEventListener('focus', () => {
+            passwordRequirements.style.display = 'block';
+        });
+
+        // Hide requirements when clicking outside if password field is empty
+        document.addEventListener('click', (e) => {
+            if (!passwordInput.contains(e.target) && !passwordInput.value) {
+                passwordRequirements.style.display = 'none';
+            }
+        });
+
+        passwordInput.addEventListener('input', () => {
+            const password = passwordInput.value;
+            validatePassword(password);
+            
+            if (password.length > 0) {
+                passwordRequirements.style.display = 'block';
+            } else {
+                passwordRequirements.style.display = 'none';
+            }
+
+            // Clear error state when user starts typing
+            passwordError.textContent = '';
+            passwordInput.classList.remove('input-error');
+        });
+
+        emailInput.addEventListener('input', () => {
+            const email = emailInput.value;
+            if (email && !validateEmail(email)) {
+                showError(emailInput, emailError, 'Please use a valid email domain (gmail.com, yahoo.com, edu.ph, etc.)');
+            } else {
+                emailError.textContent = '';
+                emailInput.classList.remove('input-error');
+            }
+        });
+
+        signupForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const email = emailInput.value;
+            const password = passwordInput.value;
+
+            // Validate email
+            if (!validateEmail(email)) {
+                showError(emailInput, emailError, 'Please use a valid email domain (gmail.com, yahoo.com, edu.ph, etc.)');
+                return;
+            }
+
+            // Validate password
+            if (!validatePassword(password)) {
+                showError(passwordInput, passwordError, 'Please meet all password requirements');
+                passwordRequirements.style.display = 'block';
+                return;
+            }
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success') {
+                    window.location.href = '/login';  // Redirect to login page on success
+                } else {
+                    showError(emailInput, emailError, data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError(emailInput, emailError, 'An error occurred during registration');
+            }
+        });
+
+        function validateEmail(email) {
+            const validDomains = /@(gmail\.com|yahoo\.com|edu\.ph|outlook\.com|hotmail\.com)$/i;
+            return validDomains.test(email);
+        }
+    </script>
+</body>
+</html>
