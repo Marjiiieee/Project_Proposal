@@ -1,20 +1,19 @@
-from flask import Flask, request, jsonify, send_file, session, g, render_template, redirect, url_for, flash
 import os
 import pdfplumber
 import mysql.connector
-import uuid  # For generating unique filenames
-from werkzeug.utils import secure_filename
-from db import get_db_connection  # Import the database connection function
-from flask import send_from_directory
-from functools import wraps
-import PyPDF2
+import uuid
 import pickle
-from flask_session import Session
-from datetime import timedelta
-from sklearn.feature_extraction.text import TfidfVectorizer
 import time
 import camelot
 import re
+import PyPDF2
+from flask import Flask, request, jsonify, send_file, session, g, render_template, redirect, url_for, flash, send_from_directory
+from sklearn.feature_extraction.text import TfidfVectorizer
+from werkzeug.utils import secure_filename
+from flask_session import Session
+from db import get_db_connection 
+from datetime import timedelta
+from functools import wraps
 
 
 app = Flask(__name__)
@@ -32,7 +31,7 @@ vectorizer = TfidfVectorizer()
 with open("tfidf_vectorizer.pkl", "wb") as f:
     pickle.dump(vectorizer, f)
 
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'docx', 'txt'}
+ALLOWED_EXTENSIONS = {'pdf'}
 
 # Ensure the upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -52,15 +51,6 @@ def close_db(error=None):
 # Check if file extension is allowed
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-# Authentication check decorator
-# def login_required(func):
-#     def wrapper(*args, **kwargs):
-#         if 'user_id' not in session:
-#             return redirect(url_for('login'))
-#         return func(*args, **kwargs)
-#     wrapper.__name__ = func.__name__
-#     return wrapper
 
 # Login required decorator
 def login_required(f):
@@ -82,7 +72,7 @@ def main():
 def home():
     return render_template("home.html")
 
-# 🔹 LOGIN ROUTE
+# LOGIN ROUTE
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -145,7 +135,7 @@ def login():
 
     return render_template("main.html")
 
-# 🔹 LOGOUT ROUTE
+# LOGOUT ROUTE
 @app.route('/logout')
 def logout():
     session.clear()  # Clear session data
@@ -153,7 +143,7 @@ def logout():
     return redirect(url_for('login'))
 
 
-# 🔹 REGISTRATION ROUTE (No Hashing)
+# REGISTRATION ROUTE (No Hashing)
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
@@ -202,7 +192,6 @@ def register():
 
     except mysql.connector.Error as e:
         return jsonify({"status": "error", "message": str(e)}), 500
-
 
 # PROPOSAL UPLOAD
 @app.route('/proposal_upload', methods=['GET', 'POST'])
@@ -311,6 +300,25 @@ def proposal_upload():
 
     return render_template('proposal_upload.html', files=files)
 
+@app.route('/uploaded_file')
+@login_required
+def uploaded_file():
+    conn = get_db()
+    cursor = conn.cursor(dictionary=True)
+    
+    # Explicitly only fetch non-archived files
+    cursor.execute("""
+        SELECT id, file_name, file_path, archived
+        FROM files 
+        WHERE user_email = %s AND archived = FALSE
+    """, (session['user_email'],))
+    
+    files = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    return jsonify(files)
+
 # Archive Page
 @app.route('/archive')
 @login_required
@@ -333,7 +341,7 @@ def archive():
     
     return render_template("archive.html", files=archived_files)
 
-# Add these new routes for archive management
+# ARCHIVE (management)
 @app.route('/move_to_archive/<int:file_id>', methods=['POST'])
 @login_required
 def move_to_archive(file_id):
@@ -416,7 +424,7 @@ def delete_file(file_id):
     
     return jsonify({"status": "success"})
 
-# Account/Profile Page
+# ACCOUNT (profile page)
 @app.route('/account')
 @login_required
 def account():
@@ -446,7 +454,7 @@ def account():
         print(f"Error fetching account details: {str(e)}")
         return redirect(url_for('login'))
 
-# Load the SVM model
+# SVM MODEL PROCESS
 # Define the correct path
 svm_model_path = r"C:\xampp\htdocs\PropEase-main\Project-main\svm_model.pkl"
 
@@ -471,9 +479,6 @@ if hasattr(vectorizer, "vocabulary_") and vectorizer.vocabulary_:
     print("Vectorizer is fitted. Ready to use.")
 else:
     print("Vectorizer is NOT fitted. You need to train it.")
-
-
-import time
 
 # Extract Text from PDF
 def extract_text_from_pdf(file_id):
@@ -525,20 +530,7 @@ def extract_tables_from_pdf(file_path):
         print("File not found for table extraction.")
     return tables_data
 
-
-@app.route('/debug_session')
-def debug_session():
-    return str(session)  # Print current session data
-
-
-
-@app.route('/toggle_menu', methods=['POST'])
-def toggle_menu():
-    session['menu_open'] = not session.get('menu_open', False)  # Toggle state
-    return '', 204  # Return success with no content
-
-from flask import send_from_directory, jsonify, session, request
-
+# PROPOSAL VIEW
 @app.route('/proposal_view/<int:file_id>')
 @login_required
 def proposal_view(file_id):
@@ -563,29 +555,92 @@ def proposal_view(file_id):
         flash("File not found or access denied", "error")
         return redirect(url_for('proposal_upload'))
 
-
-@app.route('/uploaded_file')
-@login_required
-def uploaded_file():
-    conn = get_db()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Explicitly only fetch non-archived files
-    cursor.execute("""
-        SELECT id, file_name, file_path, archived
-        FROM files 
-        WHERE user_email = %s AND archived = FALSE
-    """, (session['user_email'],))
-    
-    files = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    return jsonify(files)
-
-
 # Initialize Flask-Session correctly before running the app
 Session(app)
+
+@app.route('/delete_account', methods=['POST'])
+@login_required
+def delete_account():
+    conn = None
+    cursor = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+        user_email = session['user_email']
+
+        print(f"Attempting to delete account for user: {user_email}")  # Debug log
+
+        # Start transaction
+        conn.start_transaction()
+
+        # First get all files associated with the user
+        cursor.execute("SELECT file_path FROM files WHERE user_email = %s", (user_email,))
+        files = cursor.fetchall()
+        print(f"Found {len(files)} files to delete")  # Debug log
+
+        # Delete physical files from the server
+        for file in files:
+            try:
+                file_path = file['file_path']
+                if file_path and os.path.exists(file_path):
+                    os.remove(file_path)
+                    print(f"Deleted file: {file_path}")  # Debug log
+            except OSError as e:
+                print(f"Warning: Error deleting file {file_path}: {e}")
+                continue
+
+        # Delete records from existing tables only
+        try:
+            # Delete files records
+            cursor.execute("DELETE FROM files WHERE user_email = %s", (user_email,))
+            print(f"Deleted {cursor.rowcount} records from files table")  # Debug log
+
+            # Delete user record
+            cursor.execute("DELETE FROM registration WHERE email = %s", (user_email,))
+            print(f"Deleted {cursor.rowcount} records from registration table")  # Debug log
+
+            # Commit the transaction
+            conn.commit()
+            print("Transaction committed successfully")  # Debug log
+            
+            # Clear session
+            session.clear()
+            
+            return jsonify({
+                "status": "success",
+                "message": "Account deleted successfully"
+            })
+
+        except mysql.connector.Error as e:
+            print(f"Database error during deletion: {e}")  # Debug log
+            if conn:
+                conn.rollback()
+            raise e
+
+    except mysql.connector.Error as e:
+        print(f"MySQL Error: {e}")  # Debug log
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": f"Database error: {str(e)}"
+        }), 500
+
+    except Exception as e:
+        print(f"Unexpected error: {e}")  # Debug log
+        if conn:
+            conn.rollback()
+        return jsonify({
+            "status": "error",
+            "message": f"Unexpected error: {str(e)}"
+        }), 500
+
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+        print("Database connection closed")  # Debug log
 
 if __name__ == "__main__":
     app.run(debug=True, port=3000)  # Ensure only this instance exists

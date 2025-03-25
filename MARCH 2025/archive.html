@@ -35,15 +35,15 @@
         .archive-controls {
             background: rgba(255, 255, 255, 0.9);
             border-radius: 15px;
-            padding: 20px;
-            margin: 20px;
+            padding: 15px;  /* reduced from 20px */
+            margin: 5px 20px;  /* reduced top margin from 20px to 5px */
             display: flex;
             gap: 20px;
             align-items: center;
             backdrop-filter: blur(10px);
             border: 1px solid rgba(229, 186, 255, 0.3);
             position: sticky;
-            top: 110px; /* Position below fixed header with small gap */
+            top: 110px;
             z-index: 999;
         }
 
@@ -240,13 +240,13 @@
             gap: 20px;
             padding: 20px;
             margin-left: 20px;
-            max-width: 100vw;
+            max-width: 50vw;
             transition: margin-left 0.4s ease, max-width 0.4s ease;
             padding-bottom: 20px; /* Adds space below all content */
             font-family: 'Comfortaa', sans-serif;
         }
         .menu-open .content {
-        margin-left: 160px;
+            margin-left: 160px;
         }
         /* Logo Background Content */
         .content::before {
@@ -265,16 +265,18 @@
             z-index: -1; 
         }
         .content {
-            width: 1100px;
+            width: 100%; /* Take full width */
+            max-width: 1300px; /* Maximum width to maintain readability */
             height: auto;
             margin: auto;
             margin-top: 50px;
-            margin-left: 250px;
-            left: 0px;
+            padding: 10px;
             color: #090909;
             position: relative;
             font-size: 20px;
             z-index: 1;
+            /* Remove the grid properties from content */
+            display: block; /* Change from grid to block */
         }
 
         .file-list {
@@ -291,7 +293,7 @@
             padding: 10px;
             background-color: #b14af1;
             border-radius: 5px;
-            width: 80px;
+            width: 50px;
             height: 100px;
             text-align: center;
             cursor: pointer;
@@ -333,21 +335,33 @@
         }
 
         /* Add new styles for archive functionality */
-        .archive-header {
-            margin: 20px 0;
-            padding: 0 20px;
-            color: #51087E;
-            font: 'Comfortaa', sans-serif;
+        /* Container to keep everything aligned */
+        .archive-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
         }
 
+        .archive-header {
+            width: 100%;
+            margin-bottom: 5px;
+            margin-top: 5px;
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        /* Update archive controls to match container width */
         .archive-controls {
+            width: 100%;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 20px;
-            padding: 50px;
-            background-color: #f5f5f5;
+            margin: 10px 0; /* Reduced from 20px */
+            padding: 15px 20px;
+            background-color: #DA9CFF;
             border-radius: 5px;
+            max-width: calc(100% - 40px); /* Full width minus margins */
         }
 
         .search-box {
@@ -368,19 +382,22 @@
 
         .file-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 25px;
-            padding: 5px;
-            margin-top: 5px;
+            grid-template-columns: repeat(5, 1fr); /* 5 columns */
+            gap: 15px;
+            padding: 10px 20px;  /* reduced top padding from 20px to 10px */
+            margin: 5px auto;  /* reduced top margin from 10px to 5px */
+            width: 100%; /* Take full width */
         }
 
         .file-card {
-            background: rgba(255, 255, 255, 0.9);
+            background: #fce0ff;
             border-radius: 15px;
             backdrop-filter: blur(10px);
             transition: all 0.3s ease;
             border: 1px solid rgba(229, 186, 255, 0.3);
             overflow: hidden;
+            /* Reduce minimum width */
+            min-width: 150px;
         }
 
         .file-card:hover {
@@ -390,26 +407,26 @@
         }
 
         .file-card-inner {
-            padding: 20px;
+            padding: 10px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
+            gap: 10px;
         }
 
         .file-icon-wrapper {
             background: rgba(229, 186, 255, 0.2);
             border-radius: 50%;
-            width: 70px;
-            height: 70px;
+            width: 50px; /* Reduced from 70px */
+            height: 50px; /* Reduced from 70px */
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
         }
 
         .file-icon {
-            font-size: 30px;
+            font-size: 24px; /* Reduced from 30px */
             color: #51087E;
             transition: transform 0.3s ease;
         }
@@ -420,7 +437,7 @@
 
         .file-name {
             color: #51087E;
-            font-size: 15px;
+            font-size: 13px; /* Reduced from 15px */
             text-align: center;
             font-weight: 500;
             margin: 0;
@@ -430,8 +447,8 @@
 
         .file-actions {
             display: flex;
-            gap: 12px;
-            margin-top: 10px;
+            gap: 8px; /* Reduced from 12px */
+            margin-top: 8px;
             opacity: 0.9;
             transition: opacity 0.3s ease;
         }
@@ -441,15 +458,15 @@
         }
 
         .action-button {
-            padding: 8px 15px;
+            padding: 6px 12px; /* Reduced padding */
             border: none;
-            border-radius: 20px;
+            border-radius: 15px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px; /* Reduced from 13px */
             transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 5px;
+            gap: 4px;
         }
 
         .restore-button {
@@ -463,12 +480,12 @@
         }
 
         .delete-button {
-            background: rgba(255, 68, 68, 0.8);
+            background: #ff6565;
             color: white;
         }
 
         .delete-button:hover {
-            background: rgba(255, 68, 68, 1);
+            background: #ff6565;
             transform: scale(1.05);
         }
 
@@ -479,14 +496,14 @@
         }
 
         .empty-archive-content {
-            background: rgba(255, 255, 255, 0.9);
+            background: #fad0ff;
             border-radius: 20px;
             padding: 40px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 15px;
-            border: 2px dashed rgba(229, 186, 255, 0.5);
+            gap: 8px;
+            border: 2px dashed rgba(182, 65, 250, 0.31);
         }
 
         .empty-archive i {
@@ -502,14 +519,15 @@
         }
 
         .empty-archive-subtitle {
-            color: #666;
+            color: #51087E;
             font-size: 14px;
+            font-style: italic;
             opacity: 0.8;
         }
 
         /* Archive controls styling */
         .archive-controls {
-            background: rgba(255, 255, 255, 0.9);
+            background: #fad0ff;
             border-radius: 15px;
             padding: 20px;
             margin: 20px;
@@ -565,7 +583,7 @@
         }
 
         .modal-content {
-            background: white;
+            background: #ffffff;
             padding: 30px;
             border-radius: 15px;
             box-shadow: 0 5px 25px rgba(0, 0, 0, 0.2);
@@ -628,7 +646,7 @@
         /* Warning icon for delete confirmation */
         .modal-icon {
             font-size: 50px;
-            color: #ff4444;
+            color: #ff6565;
             margin-bottom: 20px;
         }
 
@@ -642,7 +660,7 @@
         }
 
         .modal-icon.error {
-            color: #ff4444;
+            color: #ff6565;
         }
 
         #notificationMessage {
@@ -651,6 +669,51 @@
             font-family: 'Comfortaa', sans-serif;
             margin-bottom: 25px;
             line-height: 1.4;
+        }
+
+        /* Delete All Button Container */
+        .delete-all-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+
+        .delete-all-btn {
+            background: #ff6565;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(255, 101, 101, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .delete-all-btn:hover {
+            background: #ff4747;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 101, 101, 0.3);
+        }
+
+        .delete-all-btn i {
+            font-size: 18px;
+        }
+
+        .delete-all-btn.disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .delete-all-btn.disabled:hover {
+            transform: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
     </style>
 </head>
@@ -729,6 +792,14 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Delete All Button -->
+        <div class="delete-all-container">
+            <button id="deleteAllBtn" class="delete-all-btn" onclick="confirmDeleteAll()">
+                <i class="fas fa-trash-alt"></i>
+                Delete All Files
+            </button>
+        </div>
     </div>
 
     <!-- Confirmation Modal -->
@@ -758,11 +829,6 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        function toggleMenu() {
-            const menu = document.getElementById("menu");
-            menu.classList.toggle("show");
-        }
-
         function filterFiles() {
             const searchText = document.querySelector('.search-box').value.toLowerCase();
             const files = document.querySelectorAll('.file-card');
@@ -865,6 +931,21 @@
                         fileCard.remove();
                     }
                     
+                    // Check if there are any files left
+                    const remainingFiles = document.querySelectorAll('.file-card');
+                    if (remainingFiles.length === 0) {
+                        const archiveList = document.getElementById('archive-list');
+                        archiveList.innerHTML = `
+                            <div class="empty-archive">
+                                <div class="empty-archive-content">
+                                    <i class="fas fa-archive"></i>
+                                    <p>No archived files found</p>
+                                    <span class="empty-archive-subtitle">Files you archive will appear here</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
                     // Show success notification modal
                     showNotificationModal('File restored successfully', true);
                     
@@ -882,7 +963,7 @@
                 console.error('Error restoring file:', error);
                 showNotificationModal('Error restoring file', false);
             }
-            closeModal(); // Close the confirmation modal
+            closeModal();
         }
 
         async function deleteFile(fileId) {
@@ -895,6 +976,22 @@
                 if (data.status === 'success') {
                     const fileCard = document.querySelector(`[data-file-id="${fileId}"]`);
                     fileCard.remove();
+                    
+                    // Check if there are any files left
+                    const remainingFiles = document.querySelectorAll('.file-card');
+                    if (remainingFiles.length === 0) {
+                        const archiveList = document.getElementById('archive-list');
+                        archiveList.innerHTML = `
+                            <div class="empty-archive">
+                                <div class="empty-archive-content">
+                                    <i class="fas fa-archive"></i>
+                                    <p>No archived files found</p>
+                                    <span class="empty-archive-subtitle">Files you archive will appear here</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
                     showNotificationModal('File deleted successfully', true);
                 } else {
                     showNotificationModal('Error deleting file', false);
@@ -903,15 +1000,23 @@
                 console.error('Error deleting file:', error);
                 showNotificationModal('Error deleting file', false);
             }
-            closeModal(); // Close the confirmation modal
+            closeModal();
+        }
+
+        // Menu toggle functionality
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            const currentLeft = window.getComputedStyle(menu).left;
+            menu.style.left = currentLeft === '0px' ? '-250px' : '0px';
         }
 
         // Close menu when clicking outside
         document.addEventListener('click', function(event) {
             const menu = document.getElementById('menu');
-            const icon = document.querySelector('.menu-icon');
-            if (!menu.contains(event.target) && !icon.contains(event.target)) {
-                menu.style.left = '-300px';
+            const menuIcon = document.querySelector('.menu-icon');
+            
+            if (!menu.contains(event.target) && !menuIcon.contains(event.target)) {
+                menu.style.left = '-250px';
             }
         });
 
@@ -935,6 +1040,111 @@
                 closeNotificationModal();
             }
         });
+
+        function confirmDeleteAll() {
+            const fileCards = document.querySelectorAll('.file-card');
+            if (fileCards.length === 0) {
+                showNotificationModal('No files to delete', false);
+                return;
+            }
+
+            const modal = document.getElementById('confirmModal');
+            const modalIcon = document.getElementById('modalIcon');
+            const modalMessage = document.getElementById('modalMessage');
+            
+            modalIcon.className = 'fas fa-exclamation-triangle modal-icon';
+            modalMessage.innerHTML = `Are you sure you want to delete all ${fileCards.length} files?<br>This action cannot be undone.`;
+            
+            modal.style.display = 'flex';
+
+            // Add confirm and cancel buttons
+            const modalButtons = document.querySelector('.modal-buttons');
+            modalButtons.innerHTML = `
+                <button class="modal-button cancel-button" onclick="closeModal()">Cancel</button>
+                <button class="modal-button confirm-button" onclick="deleteAllFiles()">Delete All</button>
+            `;
+        }
+
+        async function deleteAllFiles() {
+            const fileCards = document.querySelectorAll('.file-card');
+            const totalFiles = fileCards.length;
+            let deletedCount = 0;
+            let errors = 0;
+
+            for (const card of fileCards) {
+                const fileId = card.getAttribute('data-file-id');
+                try {
+                    const response = await fetch(`/delete_file/${fileId}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        card.remove();
+                        deletedCount++;
+                    } else {
+                        errors++;
+                    }
+                } catch (error) {
+                    console.error('Error deleting file:', error);
+                    errors++;
+                }
+            }
+
+            // Update the archive list if all files were deleted
+            if (deletedCount === totalFiles) {
+                const archiveList = document.getElementById('archive-list');
+                archiveList.innerHTML = `
+                    <div class="empty-archive">
+                        <div class="empty-archive-content">
+                            <i class="fas fa-archive"></i>
+                            <p>No archived files found</p>
+                            <span class="empty-archive-subtitle">Files you archive will appear here</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show result notification
+            if (errors === 0) {
+                showNotificationModal(`Successfully deleted ${deletedCount} files`, true);
+            } else {
+                showNotificationModal(`Deleted ${deletedCount} files, ${errors} failed`, false);
+            }
+            
+            closeModal();
+        }
+
+        // Update your existing DOMContentLoaded event listener to include button state management
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDeleteAllButtonState();
+        });
+
+        function updateDeleteAllButtonState() {
+            const deleteAllBtn = document.getElementById('deleteAllBtn');
+            const fileCards = document.querySelectorAll('.file-card');
+            
+            if (fileCards.length === 0) {
+                deleteAllBtn.classList.add('disabled');
+            } else {
+                deleteAllBtn.classList.remove('disabled');
+            }
+        }
+
+        // Update the button state after any file operation
+        const originalShowNotificationModal = showNotificationModal;
+        showNotificationModal = function(message, success) {
+            originalShowNotificationModal(message, success);
+            updateDeleteAllButtonState();
+        };
+    </script> 
+    <script src="https://unpkg.com/ionicons@5.4.0/dist/ionicons.js"></script>
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById('menu');
+            const currentLeft = window.getComputedStyle(menu).left;
+            menu.style.left = currentLeft === '0px' ? '-250px' : '0px';
+        }
     </script> 
 </body>
 </html>

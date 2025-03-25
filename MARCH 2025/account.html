@@ -364,5 +364,348 @@
             }
         }
     </script>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h2>Are you sure?</h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text">You are about to delete your account.</p>
+                <p class="modal-details">If you delete your account, all your files and data will be permanently removed.</p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal()" class="modal-btn cancel-btn">
+                    <i class></i> Cancel
+                </button>
+                <button onclick="deleteAccount()" class="modal-btn delete-btn">
+                    <i class="fas fa-trash-alt"></i> Delete Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon" id="notificationIcon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 id="notificationTitle"></h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text" id="notificationMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="handleNotificationOk()" class="modal-btn confirm-btn">
+                    <i class="fas fa-check"></i> Okay!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add these styles -->
+    <style>
+        /* Modal Base Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(81, 8, 126, 0.2);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.show-modal {
+            opacity: 1;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 25px rgba(81, 8, 126, 0.2);
+            transform: scale(0.7);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 3px solid #E5BAFF;
+        }
+
+        .modal.show-modal .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+
+        /* Modal Header */
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-icon {
+            margin-bottom: 15px;
+            animation: iconPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .modal-icon i {
+            font-size: 60px;
+            color: #51087E;
+            background-image: linear-gradient(45deg, #51087E, #DA9CFF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-icon.warning i {
+            color: #FF6B6B;
+            background-image: linear-gradient(45deg, #FF6B6B, #FFE66D);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-header h2 {
+            color: #51087E;
+            font-size: 24px;
+            font-family: 'Comfortaa', sans-serif;
+            margin: 0;
+            animation: slideDown 0.5s ease;
+        }
+
+        /* Modal Body */
+        .modal-text {
+            font-size: 18px;
+            color: #51087E;
+            margin-bottom: 15px;
+            text-align: center;
+            animation: fadeIn 0.5s ease;
+        }
+
+        .modal-details {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: fadeIn 0.7s ease;
+        }
+
+        /* Modal Footer */
+        .modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding-top: 20px;
+        }
+
+        .modal-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .cancel-btn {
+            background-color: #E5BAFF;
+            color: #51087E;
+        }
+
+        .cancel-btn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 156, 255, 0.3);
+        }
+
+        .delete-btn {
+            background-color: #FFE5E5;
+            color: #FF6B6B;
+        }
+
+        .delete-btn:hover {
+            background-color: #FFB6B6;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 182, 182, 0.3);
+        }
+
+        .confirm-btn {
+            background-color: #E5BAFF;
+            color: #51087E;
+            min-width: 150px;
+        }
+
+        .confirm-btn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 156, 255, 0.3);
+        }
+
+        /* Animations */
+        @keyframes iconPop {
+            0% { transform: scale(0) rotate(12deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(-12deg); }
+            70% { transform: scale(0.9) rotate(8deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Responsive Design */
+        @media screen and (max-width: 480px) {
+            .modal-content {
+                padding: 20px;
+                width: 95%;
+                margin: 10px;
+            }
+
+            .modal-footer {
+                flex-direction: column;
+            }
+
+            .modal-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+
+    <!-- Add this JavaScript -->
+    <script>
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'flex';
+            // Trigger reflow
+            modal.offsetHeight;
+            modal.classList.add('show-modal');
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hide-modal');
+            modal.classList.remove('show-modal');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('hide-modal');
+            }, 300);
+        }
+
+        function confirmDelete() {
+            showModal('confirmModal');
+        }
+
+        function closeModal() {
+            hideModal('confirmModal');
+        }
+
+        function showNotification(title, message, redirectUrl) {
+            const modal = document.getElementById('notificationModal');
+            const titleElement = document.getElementById('notificationTitle');
+            const messageElement = document.getElementById('notificationMessage');
+            const iconElement = document.getElementById('notificationIcon');
+            
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Set icon and colors based on title
+            if (title.toLowerCase().includes('success')) {
+                iconElement.innerHTML = '<i class="fas fa-check-circle"></i>';
+                iconElement.style.color = '#51087E';
+            } else {
+                iconElement.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                iconElement.style.color = '#FF6B6B';
+            }
+            
+            modal.dataset.redirectUrl = redirectUrl || '';
+            showModal('notificationModal');
+        }
+
+        function handleNotificationOk() {
+            const modal = document.getElementById('notificationModal');
+            const redirectUrl = modal.dataset.redirectUrl;
+            
+            hideModal('notificationModal');
+            
+            if (redirectUrl) {
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 300);
+            }
+        }
+
+        async function deleteAccount() {
+            try {
+                const response = await fetch('/delete_account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    closeModal(); // Close the confirmation modal
+                    showNotification(
+                        'Success',
+                        'Your account has been successfully deleted.',
+                        '/'  // Redirect to main page
+                    );
+                } else {
+                    closeModal(); // Close the confirmation modal
+                    showNotification(
+                        'Error',
+                        data.message || 'Failed to delete account'
+                    );
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                closeModal(); // Close the confirmation modal
+                showNotification(
+                    'Error',
+                    'An error occurred while deleting the account. Please try again.'
+                );
+            }
+        }
+
+        // Close modals if clicking outside
+        window.onclick = function(event) {
+            const confirmModal = document.getElementById('confirmModal');
+            const notificationModal = document.getElementById('notificationModal');
+            
+            if (event.target === confirmModal) {
+                hideModal('confirmModal');
+            }
+            if (event.target === notificationModal) {
+                hideModal('notificationModal');
+            }
+        }
+    </script>
 </body>
 </html>
