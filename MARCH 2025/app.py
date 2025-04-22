@@ -1,20 +1,78 @@
 import os
-import pdfplumber
 import mysql.connector
-import uuid
-import pickle
 import time
-import camelot
 import re
 import PyPDF2
-from flask import Flask, request, jsonify, send_file, session, g, render_template, redirect, url_for, flash, send_from_directory
-from sklearn.feature_extraction.text import TfidfVectorizer
-from werkzeug.utils import secure_filename
+import pdfplumber
+import camelot
+import uuid
+from flask import Flask, request, jsonify, session, g, render_template, redirect, url_for, flash, send_file, send_from_directory
 from flask_session import Session
-from db import get_db_connection 
 from datetime import timedelta
+from db import get_db_connection
 from functools import wraps
+from werkzeug.utils import secure_filename
 
+from flask import Flask, request, jsonify
+from t5_model import generate_title  # This imports your function
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+import torch
+from flask import Flask, request, jsonify
+from keybert import KeyBERT
+import pdfplumber
+import os
+from difflib import SequenceMatcher
+import ssl
+import certifi
+from sentence_transformers import SentenceTransformer
+
+# Configure SSL context
+ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+# Initialize models with error handling
+try:
+    # Initialize sentence transformer model
+    sentence_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device='cpu')
+except Exception as e:
+    print(f"Error loading sentence transformer model: {e}")
+    # Fallback to a simpler model
+    try:
+        sentence_model = SentenceTransformer('paraphrase-MiniLM-L3-v2', device='cpu')
+    except Exception as e:
+        print(f"Error loading fallback sentence transformer model: {e}")
+        sentence_model = None
+
+# Initialize grammar correction model with fallback
+try:
+    grammar_tokenizer = T5Tokenizer.from_pretrained(
+        "vennify/t5-base-grammar-correction",
+        legacy=True,
+        local_files_only=False
+    )
+    grammar_model = T5ForConditionalGeneration.from_pretrained(
+        "vennify/t5-base-grammar-correction",
+        local_files_only=False
+    )
+except Exception as e:
+    print(f"Error loading grammar correction model: {e}")
+    try:
+        # Fallback to t5-small
+        grammar_tokenizer = T5Tokenizer.from_pretrained("t5-small", legacy=True)
+        grammar_model = T5ForConditionalGeneration.from_pretrained("t5-small")
+    except Exception as e:
+        print(f"Error loading fallback grammar model: {e}")
+        grammar_tokenizer = None
+        grammar_model = None
+
+# Add this with other model initializations
+try:
+    title_tokenizer = T5Tokenizer.from_pretrained("t5-base")
+except Exception as e:
+    print(f"Error loading title tokenizer: {e}")
+    title_tokenizer = None
+
+kw_model = KeyBERT() 
+USE_EMOJIS_IN_LOGS = False  # Set to True if you want emojis in your debug logs
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "your_secret_key")  # Use environment variable for security
@@ -23,17 +81,17 @@ app.config['UPLOAD_FOLDER'] = 'uploads/'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB file upload limit
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=365)
 app.config['SESSION_PERMANENT'] = True
-extracted_texts = {}  # Cache for extracted text
 
-vectorizer = TfidfVectorizer()
+# Initialize Flask-Session correctly before running the app
+Session(app)
 
-# Save vectorizer
-with open("tfidf_vectorizer.pkl", "wb") as f:
-    pickle.dump(vectorizer, f)
+# Cache for extracted text
+extracted_texts = {}
+
+# BASE PATH for MODELS
+BASE_PATH = os.path.dirname(__file__)
 
 ALLOWED_EXTENSIONS = {'pdf'}
-
-# Ensure the upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 # Database connection using Flask `g`
@@ -52,98 +110,7 @@ def close_db(error=None):
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Login required decorator
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user_email' not in session:
-            flash("You must be logged in to access this page", "error")
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-@app.route("/")
-def main():
-    return render_template("main.html")
-
-# Home Route - Main Dashboard
-@app.route('/home')
-@login_required
-def home():
-    return render_template("home.html")
-
-# LOGIN ROUTE
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        if not email:
-            return jsonify({
-                "status": "error",
-                "field": "email",
-                "message": "Please enter your email"
-            })
-
-        if not password:
-            return jsonify({
-                "status": "error",
-                "field": "password",
-                "message": "Please enter your password"
-            })
-
-        try:
-            conn = get_db()
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM registration WHERE email = %s", (email,))
-            user = cursor.fetchone()
-            cursor.close()
-            conn.close()
-
-            if not user:
-                return jsonify({
-                    "status": "error",
-                    "field": "email",
-                    "message": "Email not found. Please check your email or sign up."
-                })
-
-            if user["password"] != password:  # Note: You should use proper password hashing
-                return jsonify({
-                    "status": "error",
-                    "field": "password",
-                    "message": "Incorrect password. Please try again."
-                })
-
-            # Success case
-            session.permanent = True
-            session['user_id'] = user['id']
-            session['user_email'] = user['email']
-            return jsonify({
-                "status": "success",
-                "message": "Login successful!",
-                "redirect": url_for('home')
-            })
-
-        except Exception as e:
-            print(f"Login error: {str(e)}")
-            return jsonify({
-                "status": "error",
-                "field": "email",
-                "message": "An error occurred. Please try again later."
-            })
-
-    return render_template("main.html")
-
-# LOGOUT ROUTE
-@app.route('/logout')
-def logout():
-    session.clear()  # Clear session data
-    flash("You have been logged out.", "info")
-    return redirect(url_for('login'))
-
-
-# REGISTRATION ROUTE (No Hashing)
+# Registration Route
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'GET':
@@ -156,7 +123,7 @@ def register():
         return jsonify({"status": "error", "message": "Email and password are required"}), 400
 
     # Validate email domain
-    valid_domains = ['gmail.com', 'yahoo.com', 'edu.ph', 'outlook.com', 'hotmail.com']
+    valid_domains = ['gmail.com', 'yahoo.com', 'edu.ph']
     email_domain = email.lower().split('@')[-1]
     if email_domain not in valid_domains:
         return jsonify({"status": "error", "message": "Please use a valid email domain"}), 400
@@ -193,6 +160,96 @@ def register():
     except mysql.connector.Error as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# Login Required
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_email' not in session:
+            flash("You must be logged in to access this page", "error")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+@app.route("/")
+def main():
+    return render_template("main.html")
+
+# LOG-IN
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        if not email:
+            return jsonify({
+                "status": "error",
+                "field": "email",
+                "message": "Please enter your email"
+            })
+
+        if not password:
+            return jsonify({
+                "status": "error",
+                "field": "password",
+                "message": "Please enter your password"
+            })
+
+        try:
+            conn = get_db()
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT * FROM registration WHERE email = %s", (email,))
+            user = cursor.fetchone()
+            cursor.close()
+            conn.close()
+
+            if not user:
+                return jsonify({
+                    "status": "error",
+                    "field": "email",
+                    "message": "Email not found. Check your email or Sign up."
+                })
+
+            if user["password"] != password:  # Note: You should use proper password hashing
+                return jsonify({
+                    "status": "error",
+                    "field": "password",
+                    "message": "Incorrect password. Please try again."
+                })
+
+            # Success case
+            session.permanent = True
+            session['user_id'] = user['id']
+            session['user_email'] = user['email']
+            return jsonify({
+                "status": "success",
+                "message": "Login successful!",
+                "redirect": url_for('home')
+            })
+
+        except Exception as e:
+            print(f"Login error: {str(e)}")
+            return jsonify({
+                "status": "error",
+                "field": "email",
+                "message": "An error occurred. Please try again later."
+            })
+
+    return render_template("main.html")
+
+# HOME
+@app.route('/home')
+@login_required
+def home():
+    return render_template("home.html")
+
+# LOG-OUT
+@app.route('/logout')
+def logout():
+    session.clear()  # Clear session data
+    flash("You have been logged out.", "info")
+    return redirect(url_for('login'))
+
 # PROPOSAL UPLOAD
 @app.route('/proposal_upload', methods=['GET', 'POST'])
 @login_required
@@ -214,20 +271,19 @@ def proposal_upload():
                 original_filename = secure_filename(file.filename)
                 unique_filename = f"{uuid.uuid4().hex}{os.path.splitext(original_filename)[1]}"
                 file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
-
                 # Save the file
                 file.save(file_path)
 
                 # Extract text using both pdfplumber and PyPDF2 for better results
                 extracted_text = ""
-                
+
                 # Try pdfplumber first
                 try:
-                    with pdfplumber.open(file_path) as pdf:
-                        for page in pdf.pages:
-                            text = page.extract_text()
-                            if text:
-                                extracted_text += text + "\n"
+                   with pdfplumber.open(file_path) as pdf:
+                    for page in pdf.pages:
+                        text = page.extract_text(layout=True) 
+                        if text:
+                            extracted_text += text + "\n"
                 except Exception as e:
                     print(f"pdfplumber extraction error: {e}")
                 
@@ -243,23 +299,19 @@ def proposal_upload():
                     except Exception as e:
                         print(f"PyPDF2 extraction error: {e}")
 
-                # If still no text, try to extract tables using camelot
-                if not extracted_text.strip():
-                    try:
-                        tables = camelot.read_pdf(file_path, pages='all')
-                        for table in tables:
-                            extracted_text += table.df.to_string() + "\n"
-                    except Exception as e:
-                        print(f"Camelot extraction error: {e}")
+                # Always try to extract tables using camelot
+                try:
+                    tables = camelot.read_pdf(file_path, pages='all')
+                    table_text = "\n\n".join(table.df.to_string() for table in tables)
+                    if table_text.strip():
+                        extracted_text += "\n\nTables:\n" + table_text
+                except Exception as e:
+                    print(f"Camelot extraction error: {e}")
 
-                # Verify if we got any text
+                # Verification after all extraction attempts
                 if not extracted_text.strip():
                     print("Warning: No text could be extracted from the PDF")
                     extracted_text = "No text could be extracted from this PDF."
-
-                # Debug print
-                print(f"Extracted text length: {len(extracted_text)}")
-                print(f"First 200 characters: {extracted_text[:200]}")
 
                 # Save to database with extracted text
                 cursor.execute("""
@@ -300,6 +352,128 @@ def proposal_upload():
 
     return render_template('proposal_upload.html', files=files)
 
+def is_similar(a, b, threshold=0.85):
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() > threshold
+
+def correct_grammar(text):
+    if grammar_model is None or grammar_tokenizer is None:
+        return text  # Return original text if models aren't available
+        
+    try:
+        input_text = f"grammar: {text}"
+        input_ids = grammar_tokenizer.encode(input_text, return_tensors="pt", truncation=True, max_length=128)
+        
+        with torch.no_grad():
+            outputs = grammar_model.generate(
+                input_ids, 
+                max_length=64,
+                num_beams=4,
+                early_stopping=True
+            )
+        
+        corrected_text = grammar_tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
+        return corrected_text if corrected_text else text
+    except Exception as e:
+        print(f"Grammar correction error: {e}")
+        return text  # Return original text if correction fails
+
+# Optional filter: words expected in ComSci research titles
+cs_keywords = {"system", "algorithm", "application", "framework", "detection", "machine learning", 
+               "artificial intelligence", "deep learning", "natural language", "NLP", "automation", 
+               "technology", "web", "mobile", "classification", "data", "neural", "network", "model"}
+
+@app.route('/generate_title', methods=['POST'])
+def generate_title():
+    data = request.get_json()
+    extracted_text = data.get('extracted_text')
+
+    if not extracted_text:
+        return jsonify({'status': 'error', 'message': 'No extracted text provided'}), 400
+
+    try:
+        # Check if sentence model is available
+        if sentence_model is None:
+            return jsonify({
+                'status': 'error',
+                'message': 'Text analysis model not available'
+            }), 500
+
+        # ✅ Extract keywords
+        keywords = kw_model.extract_keywords(
+            extracted_text,
+            keyphrase_ngram_range=(1, 2),
+            stop_words='english',
+            top_n=5
+        )
+        keyword_list = [kw for kw, _ in keywords]
+        keyword_str = ', '.join(keyword_list)
+
+        # ✅ Stronger prompt with CS emphasis
+        prompt = (
+            f"Generate 5 academic research project titles related to computer science. "
+            f"Context: {extracted_text.strip()}. Use keywords: {keyword_str}."
+        )
+
+        inputs = title_tokenizer.encode(prompt, return_tensors="pt", truncation=True, max_length=512)
+
+        outputs = model.generate(
+            inputs,
+            max_length=32,
+            min_length=8,
+            num_beams=20,
+            num_return_sequences=20,
+            no_repeat_ngram_size=2,
+            repetition_penalty=1.2,
+            early_stopping=True
+        )
+
+        raw_titles = [title_tokenizer.decode(output, skip_special_tokens=True).strip() for output in outputs]
+
+        # ✅ Filter by length and uniqueness
+        filtered_titles = []
+        for title in raw_titles:
+            if len(title.split()) < 4:
+                continue
+            if all(not is_similar(title, existing) for existing in filtered_titles):
+                filtered_titles.append(title)
+            if len(filtered_titles) == 5:
+                break
+
+        # ✅ Fill remaining if under 5
+        if len(filtered_titles) < 5:
+            for title in raw_titles:
+                if title not in filtered_titles and len(title.split()) >= 4:
+                    filtered_titles.append(title)
+                if len(filtered_titles) == 5:
+                    break
+
+        # ✅ Correct grammar
+        corrected_titles = [correct_grammar(title) for title in filtered_titles]
+
+        # 🔍 Optional CS filter: keep only if it mentions common CS terms (loose check)
+        final_titles = [title for title in corrected_titles if any(cs_word.lower() in title.lower() for cs_word in cs_keywords)]
+        if len(final_titles) < 5:
+            final_titles += [t for t in corrected_titles if t not in final_titles][:5 - len(final_titles)]
+
+        # ✅ Debug
+        print("[DEBUG] Extracted Keywords:", keyword_list)
+        print("[DEBUG] Final Titles:")
+        for t in final_titles:
+            print(f"- {t}")
+
+        return jsonify({
+            'status': 'success',
+            'titles': final_titles,
+            'keywords': keyword_list
+        })
+
+    except Exception as e:
+        print(f"❌ Error during title generation: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'An error occurred during title generation.'
+        }), 500
+    
 @app.route('/uploaded_file')
 @login_required
 def uploaded_file():
@@ -319,7 +493,35 @@ def uploaded_file():
     
     return jsonify(files)
 
-# Archive Page
+# PROPOSAL VIEW
+@app.route('/view_proposal/<int:file_id>')
+@login_required
+def view_proposal(file_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    cursor.execute("""
+        SELECT file_path, file_name, extracted_text 
+        FROM files 
+        WHERE id = %s AND user_email = %s
+    """, (file_id, session['user_email']))
+    
+    file_record = cursor.fetchone()
+    cursor.close()
+    conn.close()
+
+    if file_record:
+        return render_template(
+            'proposal_view.html',
+            file_path=file_record['file_path'],
+            extracted_text=file_record['extracted_text'],
+            file_id=file_id
+        )
+    else:
+        flash("File not found or Access Denied", "error")
+        return redirect(url_for('proposal_upload'))
+
+# ARCHIVE
 @app.route('/archive')
 @login_required
 def archive():
@@ -424,7 +626,7 @@ def delete_file(file_id):
     
     return jsonify({"status": "success"})
 
-# ACCOUNT (profile page)
+# ACCOUNT
 @app.route('/account')
 @login_required
 def account():
@@ -453,110 +655,6 @@ def account():
     except Exception as e:
         print(f"Error fetching account details: {str(e)}")
         return redirect(url_for('login'))
-
-# SVM MODEL PROCESS
-# Define the correct path
-svm_model_path = r"C:\xampp\htdocs\PropEase-main\Project-main\svm_model.pkl"
-
-if not os.path.exists(svm_model_path):
-    raise FileNotFoundError(f"Model file not found: {svm_model_path}")
-
-with open(svm_model_path, "rb") as model_file:
-    svm_model = pickle.load(model_file)
-
-# Load the TF-IDF Vectorizer
-vectorizer_path = r"C:\xampp\htdocs\PropEase-main\Project-main\tfidf_vectorizer.pkl"
-
-if not os.path.exists(vectorizer_path):
-    raise FileNotFoundError(f"Vectorizer file not found: {vectorizer_path}")
-
-# Load the vectorizer
-with open(vectorizer_path, "rb") as f:
-    vectorizer = pickle.load(f)
-
-# Check if it has a vocabulary
-if hasattr(vectorizer, "vocabulary_") and vectorizer.vocabulary_:
-    print("Vectorizer is fitted. Ready to use.")
-else:
-    print("Vectorizer is NOT fitted. You need to train it.")
-
-# Extract Text from PDF
-def extract_text_from_pdf(file_id):
-    conn = get_db()
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("SELECT file_path FROM files WHERE id = %s", (file_id,))
-    file_record = cursor.fetchone()
-
-    cursor.close()
-    conn.close()
-
-    if not file_record:
-        return "File not found in the database."
-
-    file_path = file_record["file_path"]
-
-    text = ""
-    try:
-        with pdfplumber.open(file_path) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-        print(f"Extracted text (first 200 chars): {text[:200]}")
-    except Exception as e:
-        print(f"PDF Extraction error: {e}")
-        return "Error extracting text."
-    
-    try:
-        with open(file_path, "rb") as f:
-            pdf_reader = PyPDF2.PdfReader(f)
-            text = " ".join([page.extract_text() for page in pdf_reader.pages if page.extract_text()])
-    except Exception as e:
-        print(f"Error extracting text: {str(e)}")
-
-    return text if text else "No text extracted."
-
-def extract_tables_from_pdf(file_path):
-    tables_data = []
-    if os.path.exists(file_path):
-        try:
-            tables = camelot.read_pdf(file_path, pages='all')
-            for table in tables:
-                tables_data.append(table.df.to_json(orient="records"))
-        except Exception as e:
-            print(f"Error extracting tables: {str(e)}")
-    else:
-        print("File not found for table extraction.")
-    return tables_data
-
-# PROPOSAL VIEW
-@app.route('/proposal_view/<int:file_id>')
-@login_required
-def proposal_view(file_id):
-    conn = get_db()
-    cursor = conn.cursor(dictionary=True)
-    
-    # Fetch file details based on the logged-in user
-    cursor.execute("SELECT file_path, extracted_text FROM files WHERE id = %s AND user_email = %s", 
-                   (file_id, session['user_email']))
-    
-    file_record = cursor.fetchone()
-    
-    cursor.close()
-    conn.close()
-
-    if file_record:
-        extracted_text = file_record.get('extracted_text', '')  # Ensure it’s not None
-        print("Extracted Text:", extracted_text)  # Debugging
-
-        return render_template('proposal_view.html', extracted_text=extracted_text)
-    else:  
-        flash("File not found or access denied", "error")
-        return redirect(url_for('proposal_upload'))
-
-# Initialize Flask-Session correctly before running the app
-Session(app)
 
 @app.route('/delete_account', methods=['POST'])
 @login_required
@@ -642,5 +740,215 @@ def delete_account():
             conn.close()
         print("Database connection closed")  # Debug log
 
+@app.route('/save_speech_transcript', methods=['POST'])
+@login_required
+def save_speech_transcript():
+    try:
+        data = request.json
+        transcript_text = data.get('text', '')
+        file_id = data.get('file_id')
+
+        if not file_id:
+            return jsonify({'status': 'error', 'message': 'File ID is required'})
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Update the speech_transcript column for the specific file
+        cursor.execute("""
+            UPDATE files 
+            SET speech_transcript = %s 
+            WHERE id = %s AND user_email = %s
+        """, (transcript_text, file_id, session['user_email']))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return jsonify({'status': 'success', 'message': 'Transcript saved successfully'})
+
+    except Exception as e:
+        print(f"Error saving transcript: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/get_speech_transcript/<int:file_id>')
+@login_required
+def get_speech_transcript(file_id):
+    try:
+        conn = get_db()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT speech_transcript 
+            FROM files 
+            WHERE id = %s AND user_email = %s
+        """, (file_id, session['user_email']))
+
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if result and result['speech_transcript']:
+            return jsonify({
+                'status': 'success',
+                'transcript': result['speech_transcript']
+            })
+        return jsonify({
+            'status': 'success',
+            'transcript': ''
+        })
+
+    except Exception as e:
+        print(f"Error retrieving transcript: {str(e)}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/analyze_content/<int:file_id>', methods=['POST'])
+@login_required
+def analyze_content(file_id):
+    try:
+        data = request.json
+        extracted_text = data.get('extracted_text', '').lower()
+        speech_text = data.get('speech_text', '').lower()
+
+        # Calculate similarity using SequenceMatcher
+        similarity = SequenceMatcher(None, extracted_text, speech_text)
+        matching_blocks = similarity.get_matching_blocks()
+        
+        # Calculate total matching content
+        total_match = sum(size for _, _, size in matching_blocks)
+        total_length = max(len(extracted_text), len(speech_text))
+        
+        # Calculate similarity percentage
+        similarity_score = round((total_match / total_length) * 100) if total_length > 0 else 0
+
+        return jsonify({
+            'status': 'success',
+            'similarity_score': similarity_score,
+            'similar_documents': []  # You can add similar documents logic here if needed
+        })
+
+    except Exception as e:
+        print(f"Error analyzing content: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+import pandas as pd
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
+import os
+
+# Load the pre-trained model
+model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+
+def load_thesis_dataset():
+    try:
+        # Using your specific Excel file
+        file_path = os.path.join('static', 'data', 'PropEase - Dataset.xlsx')
+        df = pd.read_excel(file_path)
+        
+        # Clean the data - remove any NaN values
+        df = df.fillna('')
+        
+        # Ensure the required columns exist
+        required_columns = ['title', 'content']  # Add other columns that exist in your Excel file
+        for col in required_columns:
+            if col not in df.columns:
+                print(f"Warning: Required column '{col}' not found in dataset")
+                return pd.DataFrame()
+        
+        # Precompute embeddings for all existing thesis titles and content
+        print("Computing embeddings for thesis database...")
+        df['title_embedding'] = df['title'].apply(lambda x: model.encode(str(x)))
+        df['content_embedding'] = df['content'].apply(lambda x: model.encode(str(x)))
+        print("Embeddings computation completed")
+        
+        return df
+    except FileNotFoundError:
+        print(f"Error: Dataset file 'PropEase - Dataset.xlsx' not found in static/data directory")
+        return pd.DataFrame()
+    except Exception as e:
+        print(f"Error loading thesis dataset: {e}")
+        return pd.DataFrame()
+
+def check_thesis_similarity(new_title, new_content, threshold=0.6):
+    try:
+        df = load_thesis_dataset()
+        if df.empty:
+            return []
+
+        # Encode new title and content
+        new_title_embedding = model.encode(new_title)
+        new_content_embedding = model.encode(new_content)
+
+        similar_theses = []
+        
+        for idx, row in df.iterrows():
+            # Calculate similarities
+            title_similarity = cosine_similarity(
+                [new_title_embedding], 
+                [row['title_embedding']]
+            )[0][0]
+            
+            content_similarity = cosine_similarity(
+                [new_content_embedding], 
+                [row['content_embedding']]
+            )[0][0]
+
+            # Calculate combined similarity score
+            combined_similarity = (title_similarity * 0.4 + content_similarity * 0.6)
+
+            if combined_similarity > threshold:
+                thesis_info = {
+                    'existing_title': row['title'],
+                    'title_similarity': round(title_similarity * 100, 2),
+                    'content_similarity': round(content_similarity * 100, 2),
+                    'combined_similarity': round(combined_similarity * 100, 2)
+                }
+                
+                # Add additional fields if they exist in your Excel file
+                additional_fields = ['year', 'authors', 'department', 'abstract']
+                for field in additional_fields:
+                    if field in row:
+                        thesis_info[field] = row[field]
+
+                similar_theses.append(thesis_info)
+
+        # Sort by combined similarity score
+        similar_theses.sort(key=lambda x: x['combined_similarity'], reverse=True)
+        return similar_theses[:5]  # Return top 5 similar theses
+
+    except Exception as e:
+        print(f"Error checking thesis similarity: {e}")
+        return []
+
+@app.route('/check_thesis_similarity', methods=['POST'])
+def check_similarity():
+    try:
+        data = request.json
+        new_title = data.get('title', '')
+        new_content = data.get('content', '')
+
+        if not new_title or not new_content:
+            return jsonify({
+                'status': 'error',
+                'message': 'Both title and content are required'
+            }), 400
+
+        similar_theses = check_thesis_similarity(new_title, new_content)
+
+        return jsonify({
+            'status': 'success',
+            'similar_theses': similar_theses
+        })
+
+    except Exception as e:
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
 if __name__ == "__main__":
-    app.run(debug=True, port=3000)  # Ensure only this instance exists
+    app.run(debug=True, port=3000)  
