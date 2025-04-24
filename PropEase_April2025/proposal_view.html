@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/docs.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        .logo {
+            position: absolute; 
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%); /* Center if needed */
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%); /* Center if needed */
+        }
+        .header .logo.left img {
+            width: 80px; 
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px; 
+            height: 100px; 
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1; 
+        }
+        .header-title h1 ,.header-title h2, .header-title h3{
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        .menu-icon {
+            color: #51087E;
+            font-size: 30px;
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.5s, background-color 0.3s;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .menu-icon:hover {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.05); 
+        }
+        .menu {
+            position: fixed;
+            left: -200px; /* Hidden by default */
+            width: 100px;
+            height: calc(100% - 100px); 
+            background-color: #E5BAFF;
+            padding: 5px;
+            box-sizing: border-box;
+            color: #51087E;
+            transition: left 0.4s ease;
+            z-index: 1;
+        }
+        .menu.show {
+            left: 0;
+        }
+        body.menu-open .container {
+            margin-left: 130px;
+        }
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .menu ul li {
+            margin: 30px 10px; 
+        }
+        .menu ul li a {
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 5px;
+            display: flex;
+            box-sizing: border-box;
+            transition: background-color 0.3s, transform 0.3s ease;
+        }
+        .menu ul li a i {
+            margin: 0 0 5px 0; 
+            font-size: 24px;
+        }
+        .menu ul li a:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            transform: scale(1.3);
+        }
+        /* Container for uploaded, speech boxes, plus pop-up */
+        .container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            margin: 10px; 
+            gap: 20px;
+            transition: margin-left 0.4s ease;
+        }
+        /* Logo Background Content */
+        .container::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 50px;
+            background-image: url("{{ url_for('static', filename='images/CCS.png') }}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 650px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+        .menu.show ~ .container {
+            margin-left: 100px;
+            transition: margin-left 0.3s ease;
+        }
+        /* Uploaded File and Speech to Text Purple Box */
+        .uploaded, .speech {
+            background-color: #e5baff;
+            border-radius: 20px;
+            padding: 20px;
+            position: relative;
+            width: 500px;
+            height: 450px;
+            box-shadow: 0 0 5px rgba(81, 8, 126, 0.3);
+        }
+        /* Uploaded File and Speech to Text White Box */
+        .uploaded-content, .speech-content {
+            background-color: #f7e9ff;
+            border-radius: 10px;
+            height: 94%;
+            padding: 15px;
+            margin: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        iframe {
+            width: 99%;
+            height: 500px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            overflow-x: hidden;
+        }
+        /* Content Styling */
+        .uploaded-content p, .speech-content p {
+            margin: 0 0 1em 0;
+            padding: 0;
+            text-align: justify;
+            line-height: 1.6;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 14px;
+            color: #333;
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-width: 100%;
+            text-indent: 40px; /* Add indentation to first line */
+        }
+        /* Last paragraph margin fix */
+        .uploaded-content p:last-child, .speech-content p:last-child {
+            margin-bottom: 0;
+        }
+        /* Scrollbar styling */
+        .uploaded-content::-webkit-scrollbar, .speech-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .uploaded-content::-webkit-scrollbar-track, .speech-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .uploaded-content::-webkit-scrollbar-thumb, .speech-content::-webkit-scrollbar-thumb {
+            background: #51087E;
+            border-radius: 4px;
+        }
+        .uploaded-content::-webkit-scrollbar-thumb:hover, .speech-content::-webkit-scrollbar-thumb:hover {
+            background: #3a0659;
+        }
+        /* Responsive adjustments */
+        @media screen and (max-width: 1200px) {
+            .uploaded, .speech {
+                width: 450px;
+            }
+            
+            .uploaded-content p, .speech-content p {
+                font-size: 13px;
+                text-indent: 35px; /* Slightly smaller indent for smaller screens */
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            .uploaded, .speech {
+                width: 350px;
+            }
+            
+            .uploaded-content p, .speech-content p {
+                font-size: 12px;
+                text-indent: 30px; /* Even smaller indent for mobile screens */
+            }
+        }
+        .mic-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 30px;
+            height: 30px; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #51087e;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease; 
+        }
+        .mic-button:hover {
+            background-color: #7a1ea1;
+        }
+        .mic-button.active {
+            background-color: #ff4444;
+            box-shadow: 0 0 0 3px rgba(255, 68, 68, 0.3); /* Glowing effect */
+            animation: pulse 1.5s infinite; /* Pulsing animation */
+        }
+        @keyframes pulse {
+            0% {transform: scale(1); }
+            50% {transform: scale(1.1); }
+            100% {transform: scale(1); }
+        }
+        /* Results Button */
+        .results-button {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #51087e;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(81, 8, 126, 0.3);
+        }
+        .results-button:hover {
+            background-color: #7a1ea1;
+        }
+        /* Pop-up List */
+        .pop-up {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        .popup-content {
+            background-color: white;
+            border-radius: 20px;
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+            padding: 20px;
+        }
+        /* Close Button */
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            cursor: pointer;
+            color: #51087e;
+        }
+        h4{
+            color: #51087e;
+            margin-bottom: 30px;
+            font-family: "Comfortaa", sans-serif;
+            text-align: center;
+            font-size: 35px;
+        }
+        h5{
+            color: #51087e;
+            margin-bottom: 20px;
+            font-family: "Comfortaa", sans-serif;
+        }
+        .analysis-item {
+            margin-bottom: 30px;
+            padding: 10px;
+            background: #c5c5c5;
+            border-radius: 10px;
+            box-shadow: 0 0 8px rgba(0,0,0,0.05);
+        }
+        .progress-bar-container {
+            width: 100%;
+            background-color: #51087e;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 10px;
+            margin-top: 10px;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background-color: #d8b4f8; /* Light purple */
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+        .similarity-score {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 5px;
+            color: #51087e;
+            font-family: 'Comfortaa', sans-serif;
+        }
+
+        .recommendations-section {
+            padding: 20px;
+            background: #fff;
+            border: 3px solid #51087e;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .recommendation-item {
+            background-color: white;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .recommendation-text {
+            color: #51087e;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .recommendation-reason {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
+        .similar-doc {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .similarity-chart-container {
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
+        }
+        
+        .similarity-breakdown {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .breakdown-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .breakdown-item:last-child {
+            border-bottom: none;
+        }
+        
+        .breakdown-item .label {
+            color: #51087e;
+            font-weight: 600;
+        }
+        
+        .breakdown-item .value {
+            color: #333;
+        }
+        .discrepancy-word {
+            display: inline-block;
+            background-color: #ffcdd2; /* Light red */
+            color: #b71c1c;             /* Dark red */
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin: 2px;
+            font-size: 13px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        #discrepancyList li {
+            margin-bottom: 8px;
+            line-height: 1.5;
+            font-family: 'Comfortaa', sans-serif;
+        }
+        .refresh-button-container {
+            display: flex;
+            justify-content: center;
+            margin: 15px 0;
+        }
+
+        .refresh-button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background-color: #51087E;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .refresh-button:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .refresh-button:active {
+            transform: translateY(1px);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .refresh-button i {
+            font-size: 16px;
+        }
+
+        /* Add loading state styles */
+        .refresh-button.loading {
+            position: relative;
+            pointer-events: none;
+            opacity: 0.8;
+        }
+
+        .refresh-button.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .corner-loading {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 14px;
+            color: #51087E;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 2px 4px rgba(81, 8, 126, 0.1);
+        }
+
+        .corner-loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        .corner-loading span {
+            font-size: 12px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="menu-icon" onclick="toggleMenu()">☰</div>
+            <div class="logo left">
+                <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CCS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu" id="menu">
+        <ul>
+            <li><a href="{{ url_for('home') }}"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="{{ url_for('proposal_upload') }}"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="{{ url_for('archive') }}"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="{{ url_for('account') }}"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Log Out</a></li>
+        </ul>        
+    </div> 
+
+    <div class="container">
+        <div class="uploaded" id="file-view">
+            <iframe 
+                src="data:application/pdf;base64,{{ encoded_pdf }}" 
+                style="width: 99%; height: 450px; overflow-x: hidden; border: none;">
+            </iframe>
+            <div id="extracted-text" style="display: none;">{{ extracted_text }}</div>
+        </div>
+
+        <div class="speech">
+            <div class="speech-content">
+                <!-- Speech content will appear here -->
+            </div>
+            <button class="mic-button" title="Start/Stop Speech Recognition">
+                <i class="fa fa-microphone"></i>
+            </button>
+        </div>
+
+        <button class="results-button" onclick="togglePopup()" title="Results">
+            <i class="fas fa-arrow-right"></i>
+        </button>          
+
+        <div id="popup" class="pop-up">
+            <div class="popup-content">
+                <span class="close-button" onclick="closePopup()">×</span>
+                <div class="corner-loading">
+                    <i class="fas fa-spinner"></i>
+                    <span>Processing...</span>
+                </div>
+                <div class="recommendations-section">
+                    <h4>Analysis Results</h4>
+                    <div class="refresh-button-container">
+                        <button class="refresh-button" onclick="reAnalyzeAndShow()">
+                            <i class="fas fa-sync-alt"></i>
+                            <span>Refresh Results</span>
+                        </button>
+                    </div>
+                    <div class="analysis-results">
+                        <div class="analysis-item" style="padding: 20px; background: #c5c5c5; border-radius: 10px; box-shadow: 0 0 6px rgba(0,0,0,0.05);">
+                            <h5 style="margin-bottom: 20px;">Content Analysis</h5>
+                            <div class="progress-bar-group">
+                                <div style="margin-bottom: 20px;">
+                                    <h5>Proposal and Speech Similarity</h5>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" id="progressSpeech" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="similarity-score" id="speechSimilarityLabel">0%</div>
+                                </div>
+                        
+                                <div>
+                                    <h5>Proposal and Existing Papers Similarity</h5>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar-fill" id="progressThesis" style="width: 0%;"></div>
+                                    </div>
+                                    <div class="similarity-score" id="thesisSimilarityLabel">0%</div>
+                                </div>
+                            </div>
+                        </div>                                                    
+                        <div class="analysis-item" id="discrepancyViewer">
+                            <h5>Key Discrepancies</h5>
+                            <ul id="discrepancyList" style="padding-left: 20px; color: #51087e; font-size: 14px;"></ul>
+                        </div>                                             
+                        <!-- Title Recommendations Section -->
+                        <div class="analysis-item" id="titleRecommendationsSection">
+                            <h5>Title Recommendations:</h5>
+                            <!-- Titles will be inserted here dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>        
+    </div>
+
+    <!-- Inject the saved analysis result -->
+    <script id="analysis-json" type="application/json">
+        {{ analysis_json | tojson | safe }}
+    </script>
+  
+    <script>
+        // 🔁 Global Variables for Speech Recognition
+        let analysisData = null;
+        let recognition;
+        let isListening = false;
+        let transcriptText = "";
+        let micButton;
+        let speechContent;
+        
+        
+        function formatContent(text) {
+        return text
+            .split('\n')
+            .filter(line => line.trim() !== '')
+            .map(line => `<p>${line.trim()}</p>`)
+            .join('');
+        }
+        
+        async function generateTitle() {
+            const extractedText = document.querySelector('#extracted-text').innerText;
+
+            try {
+                const response = await fetch('/generate_title', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                    extracted_text: extractedText,
+                    speech_text: transcriptText })
+                });
+
+                const data = await response.json();
+
+                if (data.status === 'success' && data.titles.length > 0) {
+                    const recommendationsSection = document.querySelector('#titleRecommendationsSection');
+                    
+                    // Clear the Title Recommendations section before adding new content
+                    recommendationsSection.innerHTML = '<h5>Title Recommendations:</h5>';
+
+                    // Loop through the generated titles and add them to the section
+                    data.titles.forEach((title) => {
+                        const div = document.createElement('div');
+                        div.className = 'recommendation-item';
+                        div.innerHTML = `
+                            <div class="recommendation-text">${title}</div>
+                            <div class="recommendation-reason">
+                                This title was generated based on the uploaded paper's content.
+                            </div>
+                        `;
+                        recommendationsSection.appendChild(div);
+                    });
+                } else {
+                    console.error('Title generation failed:', data.message);
+                }
+
+            } catch (error) {
+                console.error('Error generating title:', error);
+            }
+        }
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            const body = document.body;
+            
+            menu.classList.toggle("show");
+            body.classList.toggle("menu-open");
+        }
+
+        async function reAnalyzeAndShow() {
+            const button = document.querySelector('.refresh-button');
+            const cornerLoading = document.getElementById('corner-loading');
+            
+            // Show loading state
+            button.classList.add('loading');
+            cornerLoading.style.display = 'flex';
+            
+            try {
+                const response = await fetch(`/analyze_content/${fileId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        extracted_text: document.querySelector('#extracted-text').innerText,
+                        speech_text: transcriptText
+                    })
+                });
+
+                const results = await response.json();
+                analysisData = results;
+                updateAnalysisDisplay(results);
+            } catch (error) {
+                console.error('Error during analysis:', error);
+            } finally {
+                // Hide loading state
+                button.classList.remove('loading');
+                cornerLoading.style.display = 'none';
+            }
+        }
+
+        
+        // Get file ID from the URL path
+        const pathParts = window.location.pathname.split('/');
+        const fileId = pathParts[pathParts.length - 1];
+        console.log('Debug - File ID:', fileId);
+
+        // Speech Recognition Setup
+        function initializeSpeechRecognition() {
+        if ('webkitSpeechRecognition' in window) {
+            recognition = new webkitSpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = false;
+            recognition.lang = "en-US";
+
+            recognition.onstart = function () {
+                console.log('Speech recognition started...');
+                isListening = true;
+                micButton.classList.add('active');
+            };
+
+            recognition.onend = function () {
+                console.log('Speech recognition ended.');
+                if (isListening) {
+                    recognition.start();
+                } else {
+                    micButton.classList.remove('active');
+                }
+                analyzePDFContent();
+                generateTitle(); // ✅ Call after ending
+            };
+
+            recognition.onresult = function (event) {
+                const transcript = event.results[event.results.length - 1][0].transcript;
+                console.log('Speech recognized:', transcript);
+                const p = document.createElement('p');
+                p.textContent = transcript.trim();
+                speechContent.appendChild(p);
+
+                transcriptText += transcript.trim() + '\n';
+                speechContent.scrollTop = speechContent.scrollHeight;
+                saveTranscript();
+            };
+
+            recognition.onerror = function (event) {
+                console.error('Speech recognition error:', event.error);
+                isListening = false;
+                micButton.classList.remove('active');
+            };
+            } else {
+                alert('Your browser does not support speech recognition. Please use Chrome or another compatible browser.');
+            }
+        }
+
+            document.addEventListener('DOMContentLoaded', function () {
+            micButton = document.querySelector(".mic-button");
+            speechContent = document.querySelector(".speech-content");
+
+            initializeSpeechRecognition();
+            loadSavedTranscript();
+
+            micButton.addEventListener('click', function () {
+                if (!recognition) {
+                    initializeSpeechRecognition();
+                    return;
+                }
+
+                if (isListening) {
+                    recognition.stop();
+                    isListening = false;
+                    micButton.classList.remove('active');
+                } else {
+                    recognition.start();
+                    isListening = true;
+                    micButton.classList.add('active');
+                }
+            });
+        });
+
+
+        // Function to save transcript
+        async function saveTranscript() {
+            try {
+                const response = await fetch('/save_speech_transcript', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: transcriptText,
+                        file_id: fileId
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status !== 'success') {
+                    console.error('Failed to save transcript:', data.message);
+                }
+            } catch (error) {
+                console.error('Error saving transcript:', error);
+            }
+        }
+
+        // Function to load saved transcript
+        async function loadSavedTranscript() {
+            try {
+                const response = await fetch(`/get_speech_transcript/${fileId}`);
+                const data = await response.json();
+                
+                if (data.status === 'success' && data.transcript) {
+                    transcriptText = data.transcript;
+                    speechContent.innerHTML = formatContent(transcriptText);
+                }
+            } catch (error) {
+                console.error('Error loading transcript:', error);
+            }
+        }
+
+        // Popup Functions
+        function togglePopup() {
+            const popup = document.getElementById("popup");
+            const cornerLoading = document.getElementById('corner-loading');
+            const isVisible = popup.style.display === "flex";
+            
+            popup.style.display = isVisible ? "none" : "flex";
+
+            if (!isVisible && !analysisData) {
+                // Show loading indicator when opening popup for the first time
+                cornerLoading.style.display = 'flex';
+            }
+
+            if (!isVisible && analysisData && analysisData.similarity_score !== undefined) {
+                updateAnalysisDisplay(analysisData);
+                cornerLoading.style.display = 'none';
+            }
+        }
+
+        function closePopup() {
+            document.getElementById("popup").style.display = "none";
+        }
+        // Close popup when clicking outside
+        window.onclick = function(event) {
+            const popup = document.getElementById("popup");
+            if (event.target === popup) {
+                popup.style.display = "none";
+            }
+        };
+
+        let similarityChart = null;
+
+        function updateAnalysisDisplay(results) {
+            // Update speech similarity progress bar
+            const speechProgressBar = document.getElementById('progressSpeech');
+            const speechLabel = document.getElementById('speechSimilarityLabel');
+            if (speechProgressBar && speechLabel && results.speech_similarity !== undefined) {
+                speechProgressBar.style.width = `${results.speech_similarity}%`;
+                speechLabel.textContent = `${Math.round(results.speech_similarity)}%`;
+            }
+
+            // Update thesis similarity progress bar
+            const thesisProgressBar = document.getElementById('progressThesis');
+            const thesisLabel = document.getElementById('thesisSimilarityLabel');
+            if (thesisProgressBar && thesisLabel && results.thesis_similarity !== undefined) {
+                thesisProgressBar.style.width = `${results.thesis_similarity}%`;
+                thesisLabel.textContent = `${Math.round(results.thesis_similarity)}%`;
+            }
+
+            // Update key discrepancies
+            const discrepancyList = document.getElementById('discrepancyList');
+            if (discrepancyList) {
+                discrepancyList.innerHTML = ''; // Clear existing items
+                
+                // Add missed keypoints
+                if (results.missed_keypoints && results.missed_keypoints.length > 0) {
+                    results.missed_keypoints.forEach(point => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `🔻 <strong>Missing in speech:</strong> ${point}`;
+                        discrepancyList.appendChild(li);
+                    });
+                }
+                
+                // Add extra keypoints
+                if (results.added_keypoints && results.added_keypoints.length > 0) {
+                    results.added_keypoints.forEach(point => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `🔺 <strong>Extra (not in paper):</strong> ${point}`;
+                        discrepancyList.appendChild(li);
+                    });
+                }
+            }
+
+            // Update title recommendations
+            const titleRecommendationsSection = document.getElementById('titleRecommendationsSection');
+            if (titleRecommendationsSection && results.suggested_titles) {
+                titleRecommendationsSection.innerHTML = '<h5>Title Recommendations:</h5>';
+                results.suggested_titles.forEach(title => {
+                    const div = document.createElement('div');
+                    div.className = 'recommendation-item';
+                    div.innerHTML = `
+                        <div class="recommendation-text">${title}</div>
+                        <div class="recommendation-reason">
+                            This title was generated based on the content analysis.
+                        </div>
+                    `;
+                    titleRecommendationsSection.appendChild(div);
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+        const analysisScript = document.getElementById('analysis-json');
+        if (analysisScript && analysisScript.textContent) {
+            try {
+                analysisData = JSON.parse(analysisScript.textContent);
+                if (analysisData) {
+                    updateAnalysisDisplay(analysisData);
+                }
+            } catch (e) {
+                console.error("❌ Failed to parse analysis data:", e);
+            }
+        }
+    });
+
+        async function analyzePDFContent() {
+            try {
+                const response = await fetch(`/analyze_content/${fileId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        extracted_text: document.querySelector('#extracted-text').innerText,
+                        speech_text: transcriptText
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const results = await response.json();
+                console.log('Analysis results:', results); // Debug log
+
+                // Update speech similarity
+                const speechProgressBar = document.getElementById('progressSpeech');
+                const speechLabel = document.getElementById('speechSimilarityLabel');
+                if (results.speech_similarity !== undefined) {
+                    const similarityValue = Math.round(results.speech_similarity);
+                    speechProgressBar.style.width = `${similarityValue}%`;
+                    speechLabel.textContent = `${similarityValue}%`;
+                }
+
+                // Update thesis similarity
+                const thesisProgressBar = document.getElementById('progressThesis');
+                const thesisLabel = document.getElementById('thesisSimilarityLabel');
+                if (results.thesis_similarity !== undefined) {
+                    const thesisSimilarityValue = Math.round(results.thesis_similarity);
+                    thesisProgressBar.style.width = `${thesisSimilarityValue}%`;
+                    thesisLabel.textContent = `${thesisSimilarityValue}%`;
+                }
+
+                // Update discrepancies
+                const discrepancyList = document.getElementById('discrepancyList');
+                discrepancyList.innerHTML = ''; // Clear existing items
+
+                if (results.missed_keypoints && results.missed_keypoints.length > 0) {
+                    results.missed_keypoints.forEach(point => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `🔻 <strong>Missing in speech:</strong> ${point}`;
+                        discrepancyList.appendChild(li);
+                    });
+                }
+
+                if (results.added_keypoints && results.added_keypoints.length > 0) {
+                    results.added_keypoints.forEach(point => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `🔺 <strong>Extra in speech:</strong> ${point}`;
+                        discrepancyList.appendChild(li);
+                    });
+                }
+
+                // Update title recommendations
+                const titleRecommendationsSection = document.getElementById('titleRecommendationsSection');
+                titleRecommendationsSection.innerHTML = '<h5>Title Recommendations:</h5>';
+                
+                if (results.suggested_titles && results.suggested_titles.length > 0) {
+                    results.suggested_titles.forEach(title => {
+                        const div = document.createElement('div');
+                        div.className = 'recommendation-item';
+                        div.innerHTML = `
+                            <div class="recommendation-text">${title}</div>
+                            <div class="recommendation-reason">
+                                This title was generated based on the content analysis.
+                            </div>
+                        `;
+                        titleRecommendationsSection.appendChild(div);
+                    });
+                }
+
+            } catch (error) {
+                console.error('Error analyzing content:', error);
+            }
+        }
+
+        // Call analyzePDFContent when the mic button is clicked and recording stops
+        document.addEventListener('DOMContentLoaded', function() {
+            // ... existing mic button setup code ...
+
+            // Also analyze content when the popup is opened
+            const resultsButton = document.querySelector('.results-button');
+            resultsButton.addEventListener('click', function() {
+                analyzePDFContent();
+            });
+
+            // Load initial analysis if it exists
+            const analysisScript = document.getElementById('analysis-json');
+            if (analysisScript && analysisScript.textContent) {
+                const analysisData = JSON.parse(analysisScript.textContent);
+                if (analysisData) {
+                    analyzePDFContent();
+                }
+            }
+        });
+    </script>
+    <script type="module" src="https://unpkg.com/ionicons@5.4.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.4.0/dist/ionicons/ionicons.js"></script>
+</body>
+</html>
