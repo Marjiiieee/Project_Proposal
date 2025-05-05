@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/docs.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        .logo {
+            position: absolute; 
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%); /* Center if needed */
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%); /* Center if needed */
+        }
+        .header .logo.left img {
+            width: 80px; 
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px; 
+            height: 100px; 
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1; 
+        }
+        .header-title h1 ,.header-title h2, .header-title h3{
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        .menu-icon {
+            color: #51087E;
+            font-size: 30px;
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.5s, background-color 0.3s;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .menu-icon:hover {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.05); 
+        }
+        .menu {
+            position: fixed;
+            left: -200px; /* Hidden by default */
+            width: 100px;
+            height: calc(100% - 100px); 
+            background-color: #E5BAFF;
+            padding: 5px;
+            box-sizing: border-box;
+            color: #51087E;
+            transition: left 0.4s ease;
+            z-index: 1000;
+        }
+        .menu.show {
+            left: 0;
+        }
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .menu ul li {
+            margin: 30px 10px; 
+        }
+        .menu ul li a {
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 5px;
+            display: flex;
+            box-sizing: border-box;
+            transition: background-color 0.3s, transform 0.3s ease;
+        }
+        .menu ul li a i {
+            margin: 0 0 5px 0; 
+            font-size: 24px;
+        }
+        .menu ul li a:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            transform: scale(1.3);
+        }
+        /* Content Area */
+        .content {
+            height: auto;
+            position: relative;
+            display: block;
+            margin: 10px 0 10px 120px;
+            padding: 10px;
+            z-index: 1;
+        }
+        /* Title */
+        .content h4 {
+            color: #51087E; 
+            font-size: 50px;
+            font-weight: bold;
+            font-family: 'Comfortaa', sans-serif;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            margin-left: 100px;  
+        }
+        /*  Content Background */
+        .content::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 50px;
+            background-image: url("{{ url_for('static', filename='images/CCS.png') }}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 650px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+        .form {
+            width: 80%;
+            max-width: 600px;
+            margin: 10px 0 10px 240px;
+            padding: 10px;
+        }
+        .account-info {
+            background: #fce0ff;
+            color: #51087E;   
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .account-info p {
+            margin: 10px 0;
+            font-size: 18px;
+            display: flex;
+            gap: 10px;
+        }
+        .account-info strong {
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+        }
+        .account-info span, #password-display {
+            font-family: 'Times New Roman', Times, serif;
+            letter-spacing: 2px;
+        }
+        .password-toggle {
+            background: none;
+            border: none;
+            color: #51087E;
+            cursor: pointer;
+            padding: 5px;
+            margin-left: 10px;
+            transition: color 0.3s;
+        }
+        .password-toggle:hover {
+            color: #f3ddff;
+        }
+
+        /* Delete Account Button */
+        .delete-account button {
+            background: #ff6565;;
+            border: none;
+            border-radius: 25px;
+            margin: 140px 0 10px 130px; 
+            display: flex; /* Ensure the button and icon are aligned */
+            align-items: center; /* Center icon vertically */
+            padding: 10px 20px;
+            gap: 10px; 
+            color: #FFFFFF;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .delete-account button:hover {
+            background-color: #D32F2F;
+        }
+        .delete-account button i {
+            font-size: 18px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(81, 8, 126, 0.2);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            backdrop-filter: blur(5px);
+        }
+        .modal.show-modal {
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 25px;
+            width: 90%;
+            max-width: 450px;
+            box-shadow: 0 10px 25px rgba(81, 8, 126, 0.2);
+            transform: scale(0.7);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            border: 3px solid #E5BAFF;
+        }
+        .modal.show-modal .modal-content {
+            transform: scale(1);
+            opacity: 1;
+        }
+        /* Modal Header */
+        .modal-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .modal-icon {
+            margin-bottom: 15px;
+            animation: iconPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .modal-icon i {
+            font-size: 60px;
+            color: #51087E;
+            background-image: linear-gradient(45deg, #51087E, #DA9CFF);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .modal-icon.warning i {
+            color: #FF6B6B;
+            background-image: linear-gradient(45deg, #FF6B6B, #FFE66D);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .modal-header h2 {
+            color: #51087E;
+            font-size: 24px;
+            font-family: 'Comfortaa', sans-serif;
+            margin: 0;
+            animation: slideDown 0.5s ease;
+        }
+        .modal-text {
+            font-size: 16px;
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            text-align: center;
+            animation: fadeIn 0.7s ease;
+        }
+        .modal-footer {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding-top: 20px;
+        }
+        .modal-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-family: 'Comfortaa', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .cancel-btn {
+            background-color: #E5BAFF;
+            color: #51087E;
+        }
+        .cancel-btn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 156, 255, 0.3);
+        }
+        .delete-btn {
+            background-color: #FFE5E5;
+            color: #FF6B6B;
+        }
+        .delete-btn:hover {
+            background-color: #FFB6B6;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 182, 182, 0.3);
+        }
+        .confirm-btn {
+            background-color: #E5BAFF;
+            color: #51087E;
+            min-width: 150px;
+        }
+        .confirm-btn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(218, 156, 255, 0.3);
+        }
+        @keyframes iconPop {
+            0% { transform: scale(0) rotate(12deg); opacity: 0; }
+            50% { transform: scale(1.2) rotate(-12deg); }
+            70% { transform: scale(0.9) rotate(8deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="menu-icon" onclick="toggleMenu()">☰</div>
+            <div class="logo left">
+                <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CCS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu" id="menu">
+        <ul>
+            <li><a href="{{ url_for('home') }}"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="{{ url_for('proposal_upload') }}"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="{{ url_for('archive') }}"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="{{ url_for('account') }}"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Log Out</a></li>
+        </ul>        
+    </div> 
+
+    <div class="content">
+        <h4>Account Details</h4>
+        <div class="form">
+            <div class="account-info">
+                <p><strong>Email:</strong> <span>{{ email }}</span></p>
+                <p>
+                    <strong>Password:</strong> 
+                    <span id="password-display">••••••••</span>
+                    <button class="password-toggle" onclick="togglePassword()">
+                        <i class="fas fa-eye" id="eye-icon"></i>
+                    </button>
+                </p>
+            </div>
+        </div>
+            <div class="delete-account">
+                <button onclick="confirmDelete()">
+                <i class="fas fa-trash-alt"></i> Delete Account
+                </button>
+            </div>
+    </div>
+
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon warning">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h2>Are you sure?</h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text">Deleting your account will permanently remove all files and data.</p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeModal()" class="modal-btn cancel-btn">
+                    <i class></i> Cancel
+                </button>
+                <button onclick="deleteAccount()" class="modal-btn delete-btn">
+                    <i class="fas fa-trash-alt"></i> Delete Account
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="notificationModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-icon" id="notificationIcon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <h2 id="notificationTitle"></h2>
+            </div>
+            <div class="modal-body">
+                <p class="modal-text" id="notificationMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button onclick="handleNotificationOk()" class="modal-btn confirm-btn">
+                    <i class="fas fa-check"></i> Okay!
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            menu.classList.toggle("show");
+        }
+        // Add this event listener to close menu when clicking outside
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('menu');
+            const menuIcon = document.querySelector('.menu-icon');
+            
+            if (!menu.contains(event.target) && !menuIcon.contains(event.target) && menu.classList.contains('show')) {
+                menu.classList.remove('show');
+            }
+        });
+   
+        function togglePassword() {
+            const passwordDisplay = document.getElementById('password-display');
+            const eyeIcon = document.getElementById('eye-icon');
+            const currentPassword = "{{ password }}"; // This gets the password from Flask
+
+            if (passwordDisplay.textContent === '••••••••') {
+                passwordDisplay.textContent = currentPassword;
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordDisplay.textContent = '••••••••';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+        
+        function showModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.style.display = 'flex';
+            // Trigger reflow
+            modal.offsetHeight;
+            modal.classList.add('show-modal');
+        }
+
+        function hideModal(modalId) {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hide-modal');
+            modal.classList.remove('show-modal');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                modal.classList.remove('hide-modal');
+            }, 300);
+        }
+
+        function confirmDelete() {
+            showModal('confirmModal');
+        }
+
+        function closeModal() {
+            hideModal('confirmModal');
+        }
+
+        function showNotification(title, message, redirectUrl) {
+            const modal = document.getElementById('notificationModal');
+            const titleElement = document.getElementById('notificationTitle');
+            const messageElement = document.getElementById('notificationMessage');
+            const iconElement = document.getElementById('notificationIcon');
+            
+            titleElement.textContent = title;
+            messageElement.textContent = message;
+            
+            // Set icon and colors based on title
+            if (title.toLowerCase().includes('success')) {
+                iconElement.innerHTML = '<i class="fas fa-check-circle"></i>';
+                iconElement.style.color = '#51087E';
+            } else {
+                iconElement.innerHTML = '<i class="fas fa-exclamation-circle"></i>';
+                iconElement.style.color = '#FF6B6B';
+            }
+            
+            modal.dataset.redirectUrl = redirectUrl || '';
+            showModal('notificationModal');
+        }
+
+        function handleNotificationOk() {
+            const modal = document.getElementById('notificationModal');
+            const redirectUrl = modal.dataset.redirectUrl;
+            
+            hideModal('notificationModal');
+            
+            if (redirectUrl) {
+                setTimeout(() => {
+                    window.location.href = redirectUrl;
+                }, 300);
+            }
+        }
+
+        async function deleteAccount() {
+            try {
+                const response = await fetch('/delete_account', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.status === 'success') {
+                    closeModal(); // Close the confirmation modal
+                    showNotification(
+                        'Success',
+                        'Account has been successfully deleted.',
+                        '/'  // Redirect to main page
+                    );
+                } else {
+                    closeModal(); // Close the confirmation modal
+                    showNotification(
+                        'Error',
+                        data.message || 'Failed to delete account'
+                    );
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                closeModal(); // Close the confirmation modal
+                showNotification(
+                    'Error',
+                    'An error occurred while deleting the account. Please try again.'
+                );
+            }
+        }
+        // Close modals if clicking outside
+        window.onclick = function(event) {
+            const confirmModal = document.getElementById('confirmModal');
+            const notificationModal = document.getElementById('notificationModal');
+            
+            if (event.target === confirmModal) {
+                hideModal('confirmModal');
+            }
+            if (event.target === notificationModal) {
+                hideModal('notificationModal');
+            }
+        }
+    </script>
+</body>
+</html>

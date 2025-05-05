@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PropEase</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/docs.svg') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically */
+        }
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between; /* Changed to space-between for left/right logos */
+            position: relative; 
+            padding: 0 50px; 
+        }
+        .header {
+            background-color: #DA9CFF;
+            color: #51087E;
+            padding: 2px 0; 
+            text-align: center;
+            height: 100px; 
+            margin-bottom: 0;
+            margin-top: 0;
+        }
+        .logo {
+            position: absolute; 
+        }
+        .logo.left {
+            left: 15%; 
+            top: 12px; 
+            transform: translateX(-50%); /* Center if needed */
+        }
+        .logo.right {
+            right: 15%; 
+            top: 0px; 
+            transform: translateX(50%); /* Center if needed */
+        }
+        .header .logo.left img {
+            width: 80px; 
+            height: auto;
+        }
+        .header .logo.right img {
+            width: 100px; 
+            height: 100px; 
+        }
+        .header-title {
+            text-align: center;
+            flex-grow: 1; 
+        }
+        .header-title h1 ,.header-title h2, .header-title h3{
+            margin: 10px 0; 
+            font-size: 20px;
+        }
+        .title h1, .title h2 {
+            margin: 0;
+        }
+        .menu-icon {
+            color: #51087E;
+            font-size: 30px;
+            position: absolute;
+            top: 50%;
+            left: 20px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: opacity 0.5s, background-color 0.3s;
+            transform: translateY(-50%);
+            z-index: 2;
+        }
+        .menu-icon:hover {
+            opacity: 1;
+            background-color: rgba(0, 0, 0, 0.05); 
+        }
+        .menu {
+            position: fixed;
+            left: -200px; /* Hidden by default */
+            width: 100px;
+            height: calc(100% - 100px); 
+            background-color: #E5BAFF;
+            padding: 5px;
+            box-sizing: border-box;
+            color: #51087E;
+            transition: left 0.4s ease;
+            z-index: 1;
+        }
+        .menu.show {
+            left: 0;
+        }
+        .menu ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .menu ul li {
+            margin: 30px 10px; 
+        }
+        .menu ul li a {
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            padding: 5px;
+            display: flex;
+            box-sizing: border-box;
+            transition: background-color 0.3s, transform 0.3s ease;
+        }
+        .menu ul li a i {
+            margin: 0 0 5px 0; 
+            font-size: 24px;
+        }
+        .menu ul li a:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+            transform: scale(1.3);
+        }
+        /* Content Area */
+        .content {
+            display: flex;  
+            justify-content: flex start;
+            align-items: flex-start; 
+            padding: 10px;
+            margin-top: 10px;
+            gap: 10px;
+        }
+        /*Title */
+        .content h4 {
+            color: #51087E; 
+            font-size: 70px;
+            font-weight: bold;
+            font-family: 'Comfortaa', sans-serif;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            margin-left: 150px; 
+        }
+        /* Content Background */
+        .content::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            margin-top: 50px;
+            background-image: url("{{ url_for('static', filename='images/CCS.png') }}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: 650px;
+            opacity: 0.2; 
+            z-index: -1; 
+        }
+        /* Content-left Container */
+        .content-left {
+            width: 80%;
+        }
+        /* PropEase paragraph */
+        .content-left .p {
+            max-width: 600px;  
+            word-wrap: break-word;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 18px;
+            letter-spacing: 1px;
+            line-height: 1.8;
+            color: #090909;
+            margin-top: 5px;
+            margin-left: 150px;
+            padding: 5px;
+        }
+        /* Log-In Form Box*/
+        .form {
+            width: 260px;
+            height: auto;         
+            min-height: 300px;     
+            max-height: 400px;    
+            background-color: #E5BAFF;
+            position: relative;
+            margin: 15px 130px 10px 0; 
+            border-radius: 15px;
+            box-shadow: 0 8px 10px rgba(0, 0, 0, 0.5);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            align-self: flex-start; 
+        }
+        /* Log-In Form Title*/
+        .form h5 {
+            background-color: #DA9CFF;
+            width: 245px;
+            border-radius: 10px;
+            margin: auto;
+            padding: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            color: #51087E;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 20px;
+            font-weight: bold;  
+        }
+        .form input:focus {
+            outline: none;
+        }
+        /* Log-In Form Input Fields */
+        .email input, .password input{
+            background: #f7eaff 80%;
+            width: 240px;
+            height: 40px;
+            border-top: none;
+            border-right: none;
+            border-bottom: 1px solid #725483;
+            border-left: 10px;
+            border-radius: 5px;
+            margin: 15px 0 0px 0;
+            color: #090909;
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            font-size: 12px;
+            letter-spacing: 1px;
+            padding-left: 15px; 
+        }
+        .password-toggle {
+            position: absolute;
+            top: 53%; 
+            right: 40px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: #51087E;
+        }
+        .password-toggle i {
+            font-size: 16px;
+        }
+        .password-toggle:hover {
+            color: #a74ce0;
+            transition: color 0.3s;
+        }
+        ::placeholder {
+            color: #697565;
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            padding-left: 5px; 
+        }
+        .error-message {
+            color: #ff4444;
+            font-size: 10px;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            min-height: 8px;
+            font-family: 'Comfortaa', sans-serif;
+        }
+        .input-error {
+            border: 1px solid #ff4444 !important;
+            background-color: #fff0f0 !important;
+        }
+        .shake {
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        /*Log-In Button*/
+        .btnn {
+            background: #51087E;
+            width: 260px;
+            height: 40px;
+            border: none;
+            border-radius: 10px;
+            margin: 5px 0 5px 0; 
+            color: #ffffff;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none !important;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .btnn:hover {
+            background-color: #DA9CFF;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btnn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .btnn a {
+            color: #51087E;
+            text-decoration: none;
+            transition: 0.3s ease;
+        }
+        /*Log-In Link*/
+        .form .link {
+            margin-top: 5px;
+            font-family: 'Comfortaa', sans-serif;
+            font-size: 16px;
+            text-align: center;
+        }
+        .form .link a {
+            color: #51087E;
+            text-decoration: none;
+        }
+        .form .link a:hover{
+            color: #DA9CFF;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <div class="header-container">
+            <div class="menu-icon" onclick="toggleMenu()">☰</div>
+            <div class="logo left">
+                <img src="{{ url_for('static', filename='images/LSPU.png') }}" alt="University Logo">
+            </div>
+            <div class="header-title">
+                <h1>LAGUNA STATE POLYTECHNIC UNIVERSITY - SANTA CRUZ CAMPUS</h1>
+                <h2>College of Computer Studies</h2>
+                <h3>A.Y. 2023-2024</h3>
+            </div>
+            <div class="logo right"> 
+                <img src="{{ url_for('static', filename='images/CCS.png') }}" alt="CCS Logo">
+            </div>
+        </div>
+    </header>
+
+    <div class="menu" id="menu">
+        <ul>
+            <li><a href="{{ url_for('home') }}"><i class="fa-solid fa-house"></i> Home</a></li>
+            <li><a href="{{ url_for('proposal_upload') }}"><i class="fas fa-file-alt"></i> Proposals</a></li>
+            <li><a href="{{ url_for('archive') }}"><i class="fas fa-archive"></i> Archive</a></li>
+            <li><a href="{{ url_for('account') }}"><i class="fas fa-user"></i> Account</a></li>
+            <li><a href="{{ url_for('logout') }}"><i class="fas fa-sign-out-alt"></i> Log Out</a></li>
+        </ul>        
+    </div> 
+    
+    <div class="content">
+        <div class="content-left">
+            <h4>PropEase</h4>
+            <p class="p">
+                Welcome to PropEase where creativity meets productivity in topic proposals!  
+                Say Goodbye to tedious paperwork and Hello to a smarter way to match and generate ideas with ease and efficiency.
+                PropEase is designed to support both proponents and panelists by streamlining the entire proposal process in a fully paperless environment.
+                Experience how effortless it can be to explore and recommend titles for topic proposals.
+            </p>
+        </div>
+        
+        <div class="form">
+            <h5>Log In Here</h5>
+            <form id="login-form" action="/login" method="POST">
+                <div class="email input">
+                    <input type="email" id="email" name="email" placeholder="Enter Email" required>
+                    <div class="error-message" id="email-error"></div>
+                </div>
+
+                <div class="password input">
+                    <input type="password" id="password" name="password" placeholder="Enter Password" required>
+                    <span class="password-toggle" onclick="togglePasswordVisibility()"><i class="fas fa-eye"></i></span>
+                    <div class="error-message" id="password-error"></div>
+                </div>
+                <button type="submit" class="btnn">Log In</button>
+            </form>
+
+            <p class="link">Don't have an account yet?<br>
+                <a href="{{ url_for('register') }}">Sign up here</a>
+            </p>
+        </div> 
+    </div>
+
+    <script>
+        function toggleMenu() {
+           const menu = document.getElementById("menu");
+           menu.classList.toggle("show");
+       }
+
+       const loginForm = document.getElementById('login-form');
+       const emailInput = document.getElementById('email');
+       const passwordInput = document.getElementById('password');
+       const emailError = document.getElementById('email-error');
+       const passwordError = document.getElementById('password-error');
+
+       function showError(element, errorDiv, message) {
+           element.classList.add('input-error');
+           element.classList.add('shake');
+           errorDiv.textContent = message;
+           setTimeout(() => {
+               element.classList.remove('shake');
+           }, 500);
+       }
+       function clearErrors() {
+           emailInput.classList.remove('input-error');
+           passwordInput.classList.remove('input-error');
+           emailError.textContent = '';
+           passwordError.textContent = '';
+       }
+       loginForm.addEventListener('submit', function(e) {
+           e.preventDefault();
+           clearErrors();
+
+           const formData = new FormData(this);
+           
+           fetch('/login', {
+               method: 'POST',
+               body: formData
+           })
+           .then(response => response.json())
+           .then(data => {
+               if (data.status === 'error') {
+                   if (data.field === 'email') {
+                       showError(emailInput, emailError, data.message);
+                   } else if (data.field === 'password') {
+                       showError(passwordInput, passwordError, data.message);
+                   }
+               } else if (data.status === 'success') {
+                   window.location.href = data.redirect;
+               }
+           })
+           .catch(error => {
+               console.error('Error:', error);
+               showError(emailInput, emailError, 'An unexpected error occurred. Please try again.');
+           });
+       });
+
+       // Clear errors when user starts typing
+       emailInput.addEventListener('input', () => {
+           emailInput.classList.remove('input-error');
+           emailError.textContent = '';
+       });
+
+       passwordInput.addEventListener('input', () => {
+           passwordInput.classList.remove('input-error');
+           passwordError.textContent = '';
+       });
+
+       function togglePasswordVisibility() {
+           const passwordInput = document.getElementById('password');
+           const toggleIcon = document.querySelector('.password-toggle i');
+           
+           if (passwordInput.type === 'password') {
+               passwordInput.type = 'text';
+               toggleIcon.classList.remove('fa-eye');
+               toggleIcon.classList.add('fa-eye-slash');
+           } else {
+               passwordInput.type = 'password';
+               toggleIcon.classList.remove('fa-eye-slash');
+               toggleIcon.classList.add('fa-eye');
+           }
+       }
+   </script>
+</body>
+</html>
