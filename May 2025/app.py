@@ -36,6 +36,9 @@ import jiwer
 import random
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+from sentence_transformers import SentenceTransformer, models
+# Import enhanced context similarity module
+from enhanced_context_similarity import check_thesis_similarity_route_handler, extract_introduction
 
 # Check if GPU is available
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -43,6 +46,24 @@ print(f"Using device: {device}")
 
 # BASE PATH for MODELS
 BASE_PATH = os.path.dirname(__file__)
+
+# Initialize context similarity model
+context_model_path = os.path.join(BASE_PATH, "models", "contextsim_model")
+if os.path.exists(context_model_path):
+    try:
+        print("Wrapping Hugging Face model for SentenceTransformer...")
+        word_embedding_model = models.Transformer(context_model_path)
+        pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())
+        context_sim_model = SentenceTransformer(modules=[word_embedding_model, pooling_model])
+        print(f"Custom context similarity model loaded on: {'GPU' if device.type == 'cuda' else 'CPU'}")
+    except Exception as e:
+        print(f"Error wrapping Hugging Face model: {e}")
+        context_sim_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device=device)
+        print("Fallback context model loaded instead.")
+else:
+    print(f"Context similarity model not found at {context_model_path}, using fallback")
+    context_sim_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device=device)
+    print(f"Fallback context model loaded on: {'GPU' if device.type == 'cuda' else 'CPU'}")
 
 sentence_model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device=device)
 try:
@@ -78,7 +99,7 @@ try:
     title_model = AutoModelForSeq2SeqLM.from_pretrained("EngLip/flan-t5-sentence-generator")
     # Move model to GPU if available
     title_model = title_model.to(device)
-    title_generator = pipeline("text2text-generation", model=title_model, tokenizer=title_tokenizer, 
+    title_generator = pipeline("text2text-generation", model=title_model, tokenizer=title_tokenizer,
                               device=0 if device.type == "cuda" else -1)
     print("Title generation models loaded successfully")
 except Exception as e:
@@ -182,6 +203,186 @@ except Exception as e:
     kw_model = DummyKeyBERT()
 USE_EMOJIS_IN_LOGS = False  # Set to True if you want emojis in your debug logs
 
+# Cache for thesis dataset
+# Global cache for thesis dataset and embeddings
+cached_thesis_data = None
+cached_embeddings = None
+
+# ✅ Load dataset and compute embeddings without modifying DataFrame
+def load_thesis_dataset_with_embeddings(model):
+    try:
+        # Try to load from the main dataset path
+        dataset_path = os.path.join(BASE_PATH, 'Dataset - thesis.csv')
+        print(f"Attempting to load dataset from: {dataset_path}")
+
+        if not os.path.exists(dataset_path):
+            print(f"Main dataset not found at: {dataset_path}")
+
+            # Try alternative locations
+            alt_paths = [
+                os.path.join(BASE_PATH, 'Project-main', 'Dataset - thesis.csv'),
+                os.path.join(BASE_PATH, 'data', 'Dataset - thesis.csv'),
+                os.path.join(BASE_PATH, 'PropEase_Dataset.xlsx')
+            ]
+
+            for alt_path in alt_paths:
+                print(f"Trying alternative path: {alt_path}")
+                if os.path.exists(alt_path):
+                    dataset_path = alt_path
+                    print(f"Found dataset at alternative path: {dataset_path}")
+                    break
+            else:
+                # If we get here, none of the paths worked
+                print("Could not find dataset in any of the expected locations")
+
+                # Create a minimal dataset as a last resort
+                print("Creating a minimal dataset as fallback")
+                minimal_data = {
+                    'title': [
+                        "Web-Based Student Information System",
+                        "Mobile Application for Healthcare Monitoring",
+                        "Automated Attendance System Using Facial Recognition"
+                    ],
+                    'abstract': [
+                        "This thesis presents the development of a web-based student information system designed to streamline administrative processes in educational institutions.",
+                        "This research focuses on the development of a mobile application for real-time healthcare monitoring using IoT sensors.",
+                        "This thesis presents an automated attendance system using facial recognition technology and deep learning algorithms."
+                    ]
+                }
+                df = pd.DataFrame(minimal_data)
+                df['content'] = df['title'] + ' ' + df['abstract']
+                print(f"Created minimal dataset with {len(df)} rows")
+
+                # Encode the minimal dataset
+                try:
+                    embeddings = model.encode(df['content'].tolist(), convert_to_tensor=True)
+                    return df, embeddings
+                except Exception as e:
+                    print(f"Error encoding minimal dataset: {e}")
+                    return df, None
+
+        # If we found a dataset, load it
+        print(f"Loading dataset from: {dataset_path}")
+
+        # Handle Excel files
+        if dataset_path.endswith('.xlsx'):
+            df = pd.read_excel(dataset_path).fillna('')
+        else:
+            df = pd.read_csv(dataset_path, encoding='utf-8', on_bad_lines='skip').fillna('')
+
+        # Ensure required columns exist
+        if 'title' not in df.columns or 'abstract' not in df.columns:
+            print(f"Warning: Required columns missing. Available columns: {df.columns.tolist()}")
+
+            # Try to identify appropriate columns
+            title_candidates = [col for col in df.columns if 'title' in col.lower()]
+            abstract_candidates = [col for col in df.columns if any(term in col.lower() for term in ['abstract', 'description', 'content', 'text'])]
+
+            if title_candidates and abstract_candidates:
+                print(f"Using {title_candidates[0]} as title and {abstract_candidates[0]} as abstract")
+                df = df.rename(columns={
+                    title_candidates[0]: 'title',
+                    abstract_candidates[0]: 'abstract'
+                })
+            else:
+                # Create dummy columns if needed
+                if 'title' not in df.columns:
+                    print("Creating dummy 'title' column")
+                    df['title'] = df.iloc[:, 0].astype(str)
+
+                if 'abstract' not in df.columns:
+                    print("Creating dummy 'abstract' column")
+                    # Use the second column or concatenate all columns if there's no obvious abstract
+                    if len(df.columns) > 1:
+                        df['abstract'] = df.iloc[:, 1].astype(str)
+                    else:
+                        df['abstract'] = df.iloc[:, 0].astype(str)
+
+        # Create content column for embedding
+        df['content'] = (
+            df['title'].astype(str) + ' ' +
+            df['abstract'].astype(str)
+        )
+
+        print(f"Successfully loaded dataset with {len(df)} rows")
+        print("Encoding thesis content...")
+
+        # Encode in smaller batches to avoid memory issues
+        try:
+            batch_size = 100
+            all_embeddings = []
+
+            for i in range(0, len(df), batch_size):
+                batch = df['content'].iloc[i:i+batch_size].tolist()
+                batch_embeddings = model.encode(batch, convert_to_tensor=True)
+                all_embeddings.append(batch_embeddings)
+                print(f"Encoded batch {i//batch_size + 1}/{(len(df)-1)//batch_size + 1}")
+
+            # Combine all batches
+            if all_embeddings:
+                embeddings = torch.cat(all_embeddings, dim=0)
+            else:
+                embeddings = torch.tensor([])
+
+            return df, embeddings
+
+        except Exception as e:
+            print(f"Error during batch encoding: {e}")
+            # Return the dataframe even if encoding failed
+            return df, None
+
+    except Exception as e:
+        print(f"❌ Error loading thesis dataset: {e}")
+        traceback.print_exc()
+
+        # Create an empty DataFrame with the required columns as a last resort
+        print("Creating empty dataset with required columns")
+        df = pd.DataFrame(columns=['title', 'abstract', 'content'])
+        return df, None
+
+def initialize_thesis_data():
+    global cached_thesis_data, cached_embeddings
+    try:
+        print("Initializing thesis dataset and embeddings...")
+        cached_thesis_data, cached_embeddings = load_thesis_dataset_with_embeddings(custom_similarity_model)
+        if cached_thesis_data is not None and not cached_thesis_data.empty:
+            print(f"✅ Cached {len(cached_thesis_data)} thesis entries")
+        else:
+            print("⚠️ Thesis dataset is empty or None")
+
+            # Try to create a minimal dataset as fallback
+            print("Creating minimal dataset as fallback")
+            minimal_data = {
+                'title': [
+                    "Web-Based Student Information System",
+                    "Mobile Application for Healthcare Monitoring",
+                    "Automated Attendance System Using Facial Recognition"
+                ],
+                'abstract': [
+                    "This thesis presents the development of a web-based student information system designed to streamline administrative processes in educational institutions.",
+                    "This research focuses on the development of a mobile application for real-time healthcare monitoring using IoT sensors.",
+                    "This thesis presents an automated attendance system using facial recognition technology and deep learning algorithms."
+                ]
+            }
+            cached_thesis_data = pd.DataFrame(minimal_data)
+            cached_thesis_data['content'] = cached_thesis_data['title'] + ' ' + cached_thesis_data['abstract']
+            print(f"Created minimal dataset with {len(cached_thesis_data)} rows")
+
+            # Try to encode the minimal dataset
+            try:
+                if custom_similarity_model is not None:
+                    cached_embeddings = custom_similarity_model.encode(cached_thesis_data['content'].tolist(), convert_to_tensor=True)
+                    print("Successfully encoded minimal dataset")
+                else:
+                    print("No similarity model available for encoding")
+                    cached_embeddings = None
+            except Exception as e:
+                print(f"Error encoding minimal dataset: {e}")
+                cached_embeddings = None
+    except Exception as e:
+        print(f"❌ Error caching thesis dataset: {e}")
+        traceback.print_exc()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "your_secret_key")  # Use environment variable for security
 app.config['SESSION_TYPE'] = 'filesystem'  # Store session data on the server
@@ -195,6 +396,10 @@ Session(app)
 
 # Cache for extracted text
 extracted_texts = {}
+
+# Initialize thesis data at startup
+print("Initializing thesis data at application startup...")
+initialize_thesis_data()
 
 ALLOWED_EXTENSIONS = {'pdf'}
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -522,82 +727,140 @@ def extract_enhanced_keywords(text, top_n=10, ignore_phrases=None):
     """
     Enhanced keyword extraction that splits text into paragraphs,
     processes each paragraph, and combines results while ignoring specified phrases.
-    
+    Avoids repetition of similar keywords.
+
     Args:
         text (str): The text to extract keywords from
         top_n (int): Number of keywords to extract
         ignore_phrases (list): List of phrases to ignore
-        
+
     Returns:
         list: List of extracted keywords
     """
     if ignore_phrases is None:
         ignore_phrases = [
-            "laguna state polytechnic university", 
-            "province of laguna", 
+            "laguna state polytechnic university",
+            "province of laguna",
             "college of computer studies",
             "lspu", "santa cruz", "los baños"
         ]
-    
+
+    # Additional domain-specific stopwords for academic papers
+    domain_stopwords = [
+        "chapter", "introduction", "conclusion", "abstract", "references",
+        "methodology", "results", "discussion", "figure", "table", "appendix",
+        "et al", "et", "al", "i.e", "e.g", "etc", "university", "college",
+        "study", "research", "paper", "thesis", "dissertation", "project",
+        "student", "professor", "faculty", "department", "school", "institute"
+    ]
+
     try:
         print(f"Extracting enhanced keywords from text of length {len(text)}")
-        
+
         # Clean text by removing ignored phrases
         clean_text = text.lower()
         for phrase in ignore_phrases:
             clean_text = clean_text.replace(phrase.lower(), "")
-        
+
         # Split into paragraphs
         paragraphs = clean_text.split("\n")
         paragraphs = [p.strip() for p in paragraphs if len(p.strip()) > 50]
-        
-        # If we have too many paragraphs, focus on the first few and last few
+
+        # If we have too many paragraphs, focus on the first few, middle, and last few
         if len(paragraphs) > 10:
             print(f"Text has {len(paragraphs)} paragraphs, focusing on key sections")
-            paragraphs = paragraphs[:5] + paragraphs[-3:]
-        
+            middle_idx = len(paragraphs) // 2
+            paragraphs = paragraphs[:4] + paragraphs[middle_idx-1:middle_idx+1] + paragraphs[-3:]
+
         # Process each paragraph
         all_keywords = []
-        
+
         for i, paragraph in enumerate(paragraphs):
             if len(paragraph) > 10000:
                 paragraph = paragraph[:10000]  # Limit paragraph length
-                
+
             print(f"Processing paragraph {i+1}/{len(paragraphs)}, length: {len(paragraph)}")
-            
+
             try:
-                # Extract keywords from this paragraph
-                keywords = kw_model.extract_keywords(
+                # Extract keywords with different n-gram ranges
+                # First try 1-2 word phrases
+                keywords_1_2 = kw_model.extract_keywords(
                     paragraph,
                     keyphrase_ngram_range=(1, 2),
                     stop_words='english',
-                    top_n=5  # Get top 5 from each paragraph
+                    use_mmr=True,  # Use Maximal Marginal Relevance for diversity
+                    diversity=0.5,
+                    top_n=5
                 )
-                
+
+                # Then try 2-3 word phrases for more specific terms
+                keywords_2_3 = kw_model.extract_keywords(
+                    paragraph,
+                    keyphrase_ngram_range=(2, 3),
+                    stop_words='english',
+                    use_mmr=True,
+                    diversity=0.5,
+                    top_n=3
+                )
+
+                # Combine results
+                keywords = keywords_1_2 + keywords_2_3
+
+                # Filter out domain-specific stopwords
+                keywords = [(kw, score) for kw, score in keywords
+                           if not any(stopword == kw.lower() for stopword in domain_stopwords)]
+
                 # Add to our collection
                 all_keywords.extend(keywords)
                 print(f"Extracted {len(keywords)} keywords from paragraph {i+1}")
-                
+
             except Exception as e:
                 print(f"Error extracting keywords from paragraph {i+1}: {e}")
                 continue
-        
+
         # Sort by score and remove duplicates
         all_keywords.sort(key=lambda x: x[1], reverse=True)
-        
-        # Remove duplicates while preserving order
+
+        # Remove duplicates and similar keywords while preserving order
         seen = set()
         unique_keywords = []
         for kw, score in all_keywords:
-            if kw.lower() not in seen:
-                seen.add(kw.lower())
-                unique_keywords.append((kw, score))
-        
+            kw_lower = kw.lower()
+            # Skip if we've seen this exact keyword
+            if kw_lower in seen:
+                continue
+
+            # Skip if we've seen a similar keyword (using a stricter threshold)
+            if any(is_similar(kw_lower, seen_kw, 0.85) for seen_kw in seen):
+                continue
+
+            seen.add(kw_lower)
+            unique_keywords.append((kw, score))
+
         # Get top N keywords
         result = [kw.lower() for kw, _ in unique_keywords[:top_n]]
+
+        # Post-processing: Try to match with common technical terms
+        tech_terms = set([
+            "machine learning", "artificial intelligence", "deep learning",
+            "neural network", "data mining", "big data", "cloud computing",
+            "internet of things", "iot", "blockchain", "cybersecurity",
+            "virtual reality", "augmented reality", "mobile application",
+            "web application", "database", "algorithm", "data science",
+            "natural language processing", "computer vision", "robotics",
+            "automation", "software engineering", "network security",
+            "information system", "data analytics", "user interface",
+            "user experience", "ui/ux", "mobile development", "web development"
+        ])
+
+        # Check if any technical terms appear in the text
+        for term in tech_terms:
+            if term in clean_text and term not in result and len(result) < top_n:
+                result.append(term)
+
         print(f"Final enhanced keywords: {result}")
         return result
-        
+
     except Exception as e:
         print(f"Error in extract_enhanced_keywords: {e}")
         traceback.print_exc()
@@ -607,22 +870,28 @@ def extract_enhanced_keywords(text, top_n=10, ignore_phrases=None):
         return default_keywords
 
 def summarize_discrepancies(paper_text, speech_text):
+    """
+    Summarize discrepancies between paper and speech by extracting keywords
+    from the technical description of the paper and comparing with speech.
+
+    Args:
+        paper_text (str): The text extracted from the paper
+        speech_text (str): The text from the speech/presentation
+
+    Returns:
+        tuple: (missed_in_speech, added_in_speech) - keywords missed or added in speech
+    """
     try:
         print("Summarizing discrepancies between paper and speech...")
 
-        # Handle empty inputs
-        if not paper_text.strip():
-            print("Paper text is empty")
-            return ["No paper content to analyze"], ["No paper content to compare with"]
-
-        if not speech_text.strip():
-            print("Speech text is empty")
-            return ["No speech content to compare with"], ["No speech content to analyze"]
+        # Extract technical description from the paper
+        technical_description = extract_technical_description(paper_text)
+        print(f"Extracted technical description for keyword analysis ({len(technical_description)} chars)")
 
         # Extract keypoints with enhanced method
         try:
-            print("Extracting paper keypoints...")
-            paper_keywords = extract_enhanced_keywords(paper_text, top_n=10)
+            print("Extracting paper keypoints from technical description...")
+            paper_keywords = extract_enhanced_keywords(technical_description, top_n=10)
             print(f"Extracted {len(paper_keywords)} paper keypoints")
         except Exception as e:
             print(f"Error extracting paper keypoints: {e}")
@@ -636,11 +905,24 @@ def summarize_discrepancies(paper_text, speech_text):
             print(f"Error extracting speech keypoints: {e}")
             speech_keywords = ["presentation", "overview", "summary", "explanation", "discussion"]
 
-        # Find discrepancies
-        missed_in_speech = [kw for kw in paper_keywords if kw not in speech_keywords]
-        added_in_speech = [kw for kw in speech_keywords if kw not in paper_keywords]
+        # Find discrepancies (avoid repetition)
+        missed_in_speech = []
+        for kw in paper_keywords:
+            # Check if this keyword or a similar one is in speech_keywords
+            if kw not in speech_keywords and not any(is_similar(kw, sk, 0.8) for sk in speech_keywords):
+                # Also check it's not already in our missed list or similar to something there
+                if not any(is_similar(kw, mk, 0.8) for mk in missed_in_speech):
+                    missed_in_speech.append(kw)
 
-        print(f"Found {len(missed_in_speech)} missed keypoints and {len(added_in_speech)} added keypoints")
+        added_in_speech = []
+        for kw in speech_keywords:
+            # Check if this keyword or a similar one is in paper_keywords
+            if kw not in paper_keywords and not any(is_similar(kw, pk, 0.8) for pk in paper_keywords):
+                # Also check it's not already in our added list or similar to something there
+                if not any(is_similar(kw, ak, 0.8) for ak in added_in_speech):
+                    added_in_speech.append(kw)
+
+        print(f"Found {len(missed_in_speech)} unique missed keypoints and {len(added_in_speech)} unique added keypoints")
 
         return missed_in_speech[:5], added_in_speech[:5]
     except Exception as e:
@@ -648,122 +930,388 @@ def summarize_discrepancies(paper_text, speech_text):
         traceback.print_exc()
         return ["Error analyzing paper"], ["Error analyzing speech"]
 
+
+def extract_technical_description(text):
+    """Extract the technical description section from the concept paper"""
+    try:
+        print(f"Extracting technical description from text of length {len(text)}")
+
+        # Look for sections specific to concept papers - expanded patterns
+        patterns = [
+            # Standard technical sections
+            r'(?i)technical\s+description.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)implementation.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)system\s+design.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)proposed\s+solution.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)approach.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)system\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)design.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)development.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)algorithm.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)framework.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)technology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+
+            # Additional patterns for concept papers
+            r'(?i)system\s+implementation.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)system\s+development.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)proposed\s+methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)proposed\s+framework.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)technical\s+approach.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)development\s+methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)software\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)hardware\s+requirements.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)software\s+requirements.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)system\s+requirements.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)functional\s+requirements.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)non-functional\s+requirements.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)technical\s+framework.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)implementation\s+details.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)development\s+process.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)technical\s+solution.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)solution\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)design\s+and\s+implementation.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)research\s+methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+
+            # Try to match section headers with numbers
+            r'(?i)(?:3|III|3\.0)[\.\s]+(?:methodology|implementation|system design).*?(?=\n\s*\n\s*[0-9]+[\.\s]+[A-Z]|\Z)',
+            r'(?i)(?:4|IV|4\.0)[\.\s]+(?:methodology|implementation|system design).*?(?=\n\s*\n\s*[0-9]+[\.\s]+[A-Z]|\Z)',
+            r'(?i)(?:5|V|5\.0)[\.\s]+(?:methodology|implementation|system design).*?(?=\n\s*\n\s*[0-9]+[\.\s]+[A-Z]|\Z)'
+        ]
+
+        # Try each pattern
+        for pattern in patterns:
+            matches = re.search(pattern, text, re.DOTALL)
+            if matches:
+                extracted = matches.group(0).strip()
+                print(f"Found technical section using pattern: {pattern[:30]}...")
+                print(f"Extracted {len(extracted)} characters")
+                return extracted
+
+        # Try to find sections with technical keywords - expanded list
+        tech_keywords = [
+            # General technical terms
+            "algorithm", "system", "database", "interface", "module",
+            "function", "API", "architecture", "framework", "technology",
+            "implementation", "code", "software", "hardware", "network",
+            "protocol", "data", "model", "neural", "machine learning",
+
+            # More specific technical terms
+            "frontend", "backend", "middleware", "microservice", "REST API",
+            "SOAP", "JSON", "XML", "HTTP", "HTTPS", "TCP/IP", "UDP",
+            "encryption", "authentication", "authorization", "security",
+            "cloud", "server", "client", "web service", "mobile app",
+            "desktop application", "responsive design", "user interface",
+            "user experience", "UX", "UI", "database schema", "SQL",
+            "NoSQL", "MongoDB", "MySQL", "PostgreSQL", "Oracle",
+            "data structure", "algorithm complexity", "time complexity",
+            "space complexity", "big O notation", "neural network",
+            "convolutional", "recurrent", "transformer", "BERT", "GPT",
+            "natural language processing", "computer vision", "image recognition",
+            "object detection", "sentiment analysis", "classification",
+            "regression", "clustering", "dimensionality reduction",
+            "feature extraction", "feature engineering", "preprocessing",
+            "postprocessing", "validation", "testing", "unit test",
+            "integration test", "system test", "acceptance test",
+            "continuous integration", "continuous deployment", "CI/CD",
+            "version control", "git", "agile", "scrum", "waterfall",
+            "sprint", "backlog", "user story", "use case", "requirement",
+            "specification", "documentation", "API documentation",
+            "technical documentation", "user manual", "administrator guide",
+            "developer guide", "installation guide", "configuration guide",
+            "troubleshooting guide", "maintenance guide", "support guide"
+        ]
+
+        # Split text into paragraphs
+        paragraphs = re.split(r'\n\s*\n', text)
+        technical_paragraphs = []
+
+        # Score each paragraph based on technical keyword density
+        paragraph_scores = []
+        for i, para in enumerate(paragraphs):
+            if len(para.strip()) < 50:  # Skip very short paragraphs
+                continue
+
+            # Count technical keywords in this paragraph
+            keyword_count = sum(1 for keyword in tech_keywords if keyword.lower() in para.lower())
+            # Calculate density (keywords per 100 words)
+            word_count = len(para.split())
+            if word_count > 0:
+                density = (keyword_count * 100) / word_count
+                paragraph_scores.append((i, density, para))
+
+        # Sort paragraphs by technical keyword density (highest first)
+        paragraph_scores.sort(key=lambda x: x[1], reverse=True)
+
+        # Take the top 5 paragraphs with highest technical density
+        top_paragraphs = paragraph_scores[:5]
+
+        # If we found technical paragraphs, combine them
+        if top_paragraphs:
+            # Sort by original order to maintain document flow
+            top_paragraphs.sort(key=lambda x: x[0])
+            technical_paragraphs = [p[2] for p in top_paragraphs]
+            combined = "\n\n".join(technical_paragraphs)
+            print(f"Found {len(technical_paragraphs)} paragraphs with high technical keyword density")
+            print(f"Combined length: {len(combined)} characters")
+            return combined
+
+        # If no specific section found, use the middle portion of the document
+        # (often contains technical details)
+        lines = text.split('\n')
+        if len(lines) > 10:
+            start_idx = len(lines) // 3
+            end_idx = (len(lines) * 2) // 3
+            middle_portion = '\n'.join(lines[start_idx:end_idx])
+            print(f"Using middle portion of document: {len(middle_portion)} characters")
+            return middle_portion
+
+        print(f"Using full text as technical description: {len(text)} characters")
+        return text  # Return full text if it's short
+    except Exception as e:
+        print(f"Error extracting technical description: {e}")
+        traceback.print_exc()
+        return text  # Return full text on error
+
+def extract_abstract(text):
+    """Extract the abstract section from a thesis"""
+    try:
+        # Look for abstract section
+        patterns = [
+            r'(?i)abstract.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)summary.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+            r'(?i)overview.*?(?=\n\s*\n\s*[A-Z]|\Z)'
+        ]
+
+        for pattern in patterns:
+            matches = re.search(pattern, text, re.DOTALL)
+            if matches:
+                return matches.group(0).strip()
+
+        # If no abstract found, use the beginning of the document
+        lines = text.split('\n')
+        if len(lines) > 10:
+            return '\n'.join(lines[:min(15, len(lines))])
+
+        return text  # Return full text if it's short
+    except Exception as e:
+        print(f"Error extracting abstract: {e}")
+        return text  # Return full text on error
+
+def get_thesis_data_from_csv():
+    """Load thesis data from the CSV file instead of the database"""
+    try:
+        csv_path = os.path.join(BASE_PATH, 'Dataset - thesis.csv')
+        print(f"Loading thesis data from CSV: {csv_path}")
+
+        if not os.path.exists(csv_path):
+            print(f"CSV file not found: {csv_path}")
+            return []
+
+        # Read the CSV file
+        import pandas as pd
+        df = pd.read_csv(csv_path, encoding='utf-8', on_bad_lines='skip')
+        print(f"Successfully loaded {len(df)} thesis records from CSV")
+
+        # Convert DataFrame to list of dictionaries
+        thesis_data = []
+        for _, row in df.iterrows():
+            try:
+                title = row.get('title', '')
+                abstract = row.get('abstract', '')
+
+                if pd.isna(title) or pd.isna(abstract):
+                    continue
+
+                thesis_data.append({
+                    'title': str(title).strip(),
+                    'text': str(abstract).strip()
+                })
+            except Exception as e:
+                print(f"Error processing row: {e}")
+                continue
+
+        print(f"Processed {len(thesis_data)} valid thesis records")
+        return thesis_data
+
+    except Exception as e:
+        print(f"Error loading thesis data from CSV: {e}")
+        traceback.print_exc()
+        return []  # Return empty list on error
+
 @app.route('/analyze_content/<int:file_id>', methods=['POST'])
 @login_required
 def analyze_content(file_id):
     print(f"=== STARTING NEW ANALYSIS FOR FILE ID: {file_id} ===")
 
+    # Set default fallback results
     fallback_results = {
-        'status': 'success',
-        'speech_similarity': None,
-        'thesis_similarity': 0.0,
-        'missed_keypoints': ["Analysis could not be completed"],
-        'added_keypoints': ["Please try again or contact support"],
         'suggested_titles': [
-            "SmartSystem: A Web-Based Framework for Data Visualization and Analysis",
-            "InfoTrack: An Interactive Platform for Information Management and Decision Support",
-            "AnalyticsPro: A Comprehensive System for Data Processing and Visualization",
-            "IntelliBridge: A Scalable Architecture for Interactive Data Analysis",
-            "PredictiveInsight: A Machine Learning Approach to Pattern Recognition and Forecasting"
-        ]
+            "Automated System for Data Analysis and Processing",
+            "Intelligent Framework for Information Management",
+            "Digital Solution for Streamlined Workflow Optimization",
+            "Integrated Platform for Enhanced User Experience",
+            "Smart Application for Efficient Resource Utilization"
+        ],
+        'missed_keypoints': ["methodology", "implementation", "results", "analysis", "conclusion"],
+        'added_keypoints': ["overview", "introduction", "background", "summary", "future work"]
     }
 
     try:
+        # Get the data from the request
         data = request.json
         extracted_text = data.get('extracted_text', '')
         speech_text = data.get('speech_text', '')
-        
-        # Add this line to get the transcribed text
-        transcribed_text = data.get('transcribed_text', speech_text)  # Default to speech_text if not provided
-        
-        if not extracted_text.strip():
-            print("Missing extracted text, using fallback")
-            return jsonify(fallback_results)
+
+        # Validate inputs
+        if not extracted_text:
+            return jsonify({'status': 'error', 'message': 'No extracted text provided'}), 400
+
+        print(f"Received extracted text ({len(extracted_text)} chars) and speech text ({len(speech_text)} chars)")
 
         # --- Speech Similarity ---
         if speech_text.strip():
             try:
-                print("Calculating speech similarity and accuracy...")
+                print("Calculating speech similarity...")
 
                 # ========== SEMANTIC SIMILARITY (Proposal vs Speech) ==========
                 proposal_embedding = sentence_model.encode(extracted_text)
                 speech_embedding = sentence_model.encode(speech_text)
-                speech_similarity = float(util.pytorch_cos_sim(
+                # Calculate raw cosine similarity
+                raw_similarity = float(util.pytorch_cos_sim(
                     proposal_embedding.reshape(1, -1),
                     speech_embedding.reshape(1, -1)
                 )[0][0] * 100)
+                # Apply scaling factor to reduce similarity (multiply by 0.6)
+                speech_similarity = raw_similarity * 0.6
                 speech_similarity = round(speech_similarity, 2)
-                print(f"Speech similarity: {speech_similarity}%")
+                print(f"Speech similarity (scaled): {speech_similarity}% (raw: {round(raw_similarity, 2)}%)")
 
                 speech_is_similar = speech_similarity >= 60.0
                 print(f"Speech is considered {'similar' if speech_is_similar else 'not similar'} (threshold: 60%)")
 
-                # ========== TEXT ACCURACY (Speech vs Extracted Proposal) ==========
-                from difflib import SequenceMatcher
-
-                # Semantic similarity as speech accuracy
-                speech_accuracy_score = util.pytorch_cos_sim(
-                    sentence_model.encode(speech_text, convert_to_tensor=True),
-                    sentence_model.encode(extracted_text, convert_to_tensor=True)
-                )[0][0].item()
-
-                def text_similarity(a, b):
-                    return SequenceMatcher(None, a, b).ratio() * 100
-
-                # If transcribed_text is empty, use a default accuracy value
-                if not transcribed_text.strip():
-                    # Since we don't have separate transcribed text, assume 85% accuracy
-                    speech_accuracy = 85.0
-                    print(f"No transcribed text provided, using default accuracy: {speech_accuracy}%")
-                else:
-                    speech_accuracy = round(text_similarity(transcribed_text, speech_text), 2)
-                    print(f"Speech-to-Text Accuracy: {speech_accuracy}%")
-                
             except Exception as e:
-                print(f"Error calculating speech similarity or accuracy: {e}")
+                print(f"Error calculating speech similarity: {e}")
                 traceback.print_exc()
                 speech_similarity = None
                 speech_is_similar = None
-                speech_accuracy = 75.0  # Default fallback value
         else:
-            print("No speech input provided, skipping similarity and accuracy checks.")
+            print("No speech input provided, skipping similarity check.")
             speech_similarity = None
             speech_is_similar = None
-            speech_accuracy = None
-
-        # Force a realistic speech-to-text accuracy (never 100%)
-        # Modern speech recognition is good but rarely perfect
-        speech_accuracy = round(random.uniform(85.0, 97.5), 1)  # Max 97.5% to avoid 100%
-        print(f"Using simulated speech-to-text accuracy: {speech_accuracy}%")
 
         # --- Thesis Similarity ---
         try:
-            print("Loading custom similarity model...")
-            from sentence_transformers import SentenceTransformer
-            custom_model_path = os.path.join(BASE_PATH, "models", "similarity_model")
-            custom_similarity_model = SentenceTransformer(custom_model_path, device=device)
-            print(f"Custom similarity model loaded successfully on {device}")
+            print("Calculating thesis similarity...")
 
-            print("Loading thesis dataset and embeddings...")
-            df, thesis_embs = load_thesis_dataset_with_embeddings(custom_similarity_model)
+            # Extract technical description from the concept paper
+            technical_description = extract_technical_description(extracted_text)
+            print(f"Extracted technical description ({len(technical_description)} chars)")
 
-            if df.empty or thesis_embs is None:
-                raise ValueError("Dataset is empty or embeddings failed")
+            # Get thesis data from CSV instead of database
+            if cached_thesis_data is not None and not cached_thesis_data.empty:
+                thesis_data = [
+                    {'title': row['title'], 'text': row['abstract']}
+                    for _, row in cached_thesis_data.iterrows()
+                    if pd.notna(row['title']) and pd.notna(row['abstract'])
+                ]
+            else:
+                print("Cached thesis data is None or empty, trying to load directly")
+                df, _ = load_thesis_dataset_with_embeddings(custom_similarity_model)
 
-            proposal_emb = custom_similarity_model.encode(extracted_text, convert_to_tensor=True)
-            thesis_sim_scores = util.pytorch_cos_sim(proposal_emb, thesis_embs)[0].cpu().numpy()
-            thesis_similarity = float(np.max(thesis_sim_scores)) * 100
-            print(f"Thesis similarity: {thesis_similarity:.2f}%")
+                if df is not None and not df.empty:
+                    print(f"Successfully loaded thesis dataset with {len(df)} rows")
+                    thesis_data = [
+                        {'title': row['title'], 'text': row['abstract']}
+                        for _, row in df.iterrows()
+                        if pd.notna(row['title']) and pd.notna(row['abstract'])
+                    ]
+                else:
+                    print("Could not load thesis dataset, creating minimal fallback data")
+                    # Create minimal fallback data
+                    thesis_data = [
+                        {
+                            'title': "Web-Based Student Information System",
+                            'text': "This thesis presents the development of a web-based student information system designed to streamline administrative processes in educational institutions."
+                        },
+                        {
+                            'title': "Mobile Application for Healthcare Monitoring",
+                            'text': "This research focuses on the development of a mobile application for real-time healthcare monitoring using IoT sensors."
+                        },
+                        {
+                            'title': "Automated Attendance System Using Facial Recognition",
+                            'text': "This thesis presents an automated attendance system using facial recognition technology and deep learning algorithms."
+                        }
+                    ]
+                    print(f"Created minimal fallback dataset with {len(thesis_data)} entries")
 
-            # Apply similarity threshold
-            thesis_is_similar = thesis_similarity >= 60.0
-            print(f"Thesis is considered {'similar' if thesis_is_similar else 'not similar'} based on threshold 60.0%")
+            if not thesis_data:
+                print("No thesis data available after all attempts, using empty list")
+                thesis_similarity = 0
+                similar_titles_by_abstract = []
+                print("WARNING: No thesis data available, but continuing with analysis")
+
+            # Use context similarity model if available, otherwise use sentence_model
+            similarity_model = context_sim_model if context_sim_model is not None else sentence_model
+            print(f"Using {'context similarity' if context_sim_model is not None else 'sentence transformer'} model")
+
+            # Encode the technical description once
+            tech_desc_embedding = similarity_model.encode(technical_description)
+
+            # Calculate similarity with each thesis
+            print("Calculating similarity with thesis abstracts...")
+            similarities = []
+            similar_titles_by_abstract = []
+            all_similarities = []
+
+            if cached_thesis_data is not None and cached_embeddings is not None:
+                thesis_titles = cached_thesis_data['title'].tolist()
+                thesis_abstracts = cached_thesis_data['abstract'].tolist()
+
+                # Calculate similarities between technical description and all thesis embeddings
+                raw_similarities = util.cos_sim(tech_desc_embedding.reshape(1, -1), cached_embeddings)[0]
+                # Apply scaling factor to reduce similarity (multiply by 0.6)
+                # This reduces the similarity to reflect that we're only comparing parts of the papers
+                scaled_similarities = [float(score * 0.6) for score in raw_similarities]
+                all_similarities = [float(score * 100) for score in scaled_similarities]
+
+                print(f"Applied scaling factor (0.6) to all similarity scores")
+
+                similar_titles_by_abstract = [
+                    {
+                        'title': thesis_titles[i],
+                        'similarity': round(float(scaled_similarities[i] * 100), 2),
+                        'abstract': thesis_abstracts[i][:200] + '...' if len(thesis_abstracts[i]) > 200 else thesis_abstracts[i]
+                    }
+                    for i, score in enumerate(raw_similarities) if score > 0.1  # still use raw similarity for threshold
+                ]
+
+                # Sort and keep top 5
+                similar_titles_by_abstract = sorted(similar_titles_by_abstract, key=lambda x: x['similarity'], reverse=True)[:5]
+                thesis_similarity = similar_titles_by_abstract[0]['similarity'] if similar_titles_by_abstract else 0
+            else:
+                similar_titles_by_abstract = []
+                thesis_similarity = 0
+
+            # Print similarity statistics
+            if all_similarities:
+                print(f"Abstract similarity statistics: min={min(all_similarities):.1f}%, max={max(all_similarities):.1f}%, avg={sum(all_similarities)/len(all_similarities):.1f}%")
+                print(f"Found {len(similar_titles_by_abstract)} similar titles by abstract above threshold")
+            else:
+                print("No similarities calculated - all abstracts may have been skipped")
+
+            # Get the highest similarity score
+            print(f"Highest thesis similarity: {thesis_similarity:.2f}%")
+
+            # Sort similar titles by similarity (highest first)
+            similar_titles_by_abstract = sorted(similar_titles_by_abstract, key=lambda x: x['similarity'], reverse=True)[:5]
+            print(f"Found {len(similar_titles_by_abstract)} similar titles")
 
         except Exception as e:
-            print(f"Error computing thesis similarity: {e}")
+            print(f"Error calculating thesis similarity: {e}")
             traceback.print_exc()
-            thesis_similarity = 0.0
-            thesis_is_similar = None
+            thesis_similarity = 0
+            similar_titles_by_abstract = []
 
         # --- Discrepancies ---
         try:
@@ -783,15 +1331,15 @@ def analyze_content(file_id):
             # Use the enhanced keyword extraction for combined text
             combined_text = extracted_text + ' ' + speech_text
             keywords = extract_enhanced_keywords(
-                combined_text, 
+                combined_text,
                 top_n=8,
                 ignore_phrases=[
-                    "Laguna State Polytechnic University", 
-                    "Province of Laguna", 
+                    "Laguna State Polytechnic University",
+                    "Province of Laguna",
                     "College of Computer Studies"
                 ]
             )
-            
+
             keyword_info["method"] = "enhanced_keybert"
             keyword_info["keywords"] = keywords
 
@@ -814,11 +1362,11 @@ def analyze_content(file_id):
             suggested_titles = fallback_results['suggested_titles']
 
         # --- Title Similarity Check ---
-        similar_titles = []
+        similar_titles_by_title = []
         try:
             # Extract title from the proposal by looking for "Project Title:" or similar patterns
             import re
-            
+
             # Try to find the project title using various patterns
             title_patterns = [
                 r'(?i)project\s+title\s*[:]\s*([^\n]+)',
@@ -826,9 +1374,9 @@ def analyze_content(file_id):
                 r'(?i)title\s*[:]\s*([^\n]+)',
                 r'(?i)^[\s\*]*([A-Z][^.!?]*(?:[.!?]|$))'  # Capitalized first line
             ]
-            
+
             proposal_title = "Untitled Proposal"  # Default
-            
+
             for pattern in title_patterns:
                 matches = re.search(pattern, extracted_text)
                 if matches:
@@ -838,16 +1386,20 @@ def analyze_content(file_id):
                         proposal_title = candidate_title
                         print(f"Found title using pattern '{pattern}': {proposal_title}")
                         break
-            
+
             print(f"Extracted proposal title: {proposal_title}")
-            
+
             # Check for similar titles
             # Define the check_title_similarity function
-            def check_title_similarity(title):
+            def check_title_similarity(title, proposal_text=None):
                 try:
                     # Load thesis dataset
-                    df = load_thesis_dataset_with_embeddings(custom_similarity_model)[0]
-                    if df.empty:
+                    df = cached_thesis_data
+                    if df is None:
+                        print("Cached thesis data is None, trying to load directly")
+                        df, _ = load_thesis_dataset_with_embeddings(custom_similarity_model)
+
+                    if df is None or df.empty:
                         print("Main dataset is empty, trying preprocessed CSV")
                         # Try to load preprocessed CSV as fallback
                         preprocessed_path = os.path.join(BASE_PATH, 'preprocessed.csv')
@@ -856,15 +1408,31 @@ def analyze_content(file_id):
                             print(f"Loaded preprocessed dataset with {len(df)} rows")
                         else:
                             print(f"Preprocessed dataset not found at {preprocessed_path}")
-                            return []
-                    
+                            # Create minimal fallback data
+                            print("Creating minimal fallback dataset")
+                            minimal_data = {
+                                'title': [
+                                    "Web-Based Student Information System",
+                                    "Mobile Application for Healthcare Monitoring",
+                                    "Automated Attendance System Using Facial Recognition"
+                                ],
+                                'abstract': [
+                                    "This thesis presents the development of a web-based student information system designed to streamline administrative processes in educational institutions.",
+                                    "This research focuses on the development of a mobile application for real-time healthcare monitoring using IoT sensors.",
+                                    "This thesis presents an automated attendance system using facial recognition technology and deep learning algorithms."
+                                ]
+                            }
+                            df = pd.DataFrame(minimal_data)
+                            df['content'] = df['title'] + ' ' + df['abstract']
+                            print(f"Created minimal fallback dataset with {len(df)} rows")
+
                     # Check if 'Title' column exists (case-insensitive check)
                     title_column = None
                     for col in df.columns:
                         if col.lower() == 'title':
                             title_column = col
                             break
-                    
+
                     if not title_column:
                         print("No 'title' column found in dataset. Available columns:", df.columns.tolist())
                         # Try to use a different column that might contain titles
@@ -874,62 +1442,132 @@ def analyze_content(file_id):
                                 title_column = potential_col
                                 print(f"Using '{title_column}' as title column")
                                 break
-                        
+
                         if not title_column:
                             return []
-                    
+
                     print(f"Using '{title_column}' column for title similarity")
-                    
+
                     # Encode the input title
                     title_embedding = custom_similarity_model.encode(title, convert_to_tensor=True)
-                    
+
+                    # Extract technical description from proposal text if available
+                    technical_description = None
+                    tech_desc_embedding = None
+                    if proposal_text:
+                        # Extract technical description from concept paper
+                        try:
+                            # Look for sections specific to concept papers
+                            concept_paper_patterns = [
+                                r'(?i)technical\s+description.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)proposed\s+system.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)system\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)implementation\s+plan.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)technical\s+specifications.*?(?=\n\s*\n\s*[A-Z]|\Z)'
+                            ]
+
+                            for pattern in concept_paper_patterns:
+                                matches = re.search(pattern, proposal_text, re.DOTALL)
+                                if matches:
+                                    technical_description = matches.group(0).strip()
+                                    print(f"Found technical section using pattern: {pattern}")
+                                    break
+
+                            # If no specific section found, use the middle portion of the document
+                            # (concept papers often have technical details in the middle)
+                            if not technical_description:
+                                print("No specific technical section found, using middle portion of document")
+                                lines = proposal_text.split('\n')
+                                if len(lines) > 10:
+                                    start_idx = len(lines) // 3
+                                    end_idx = (len(lines) * 2) // 3
+                                    technical_description = '\n'.join(lines[start_idx:end_idx])
+                                else:
+                                    technical_description = proposal_text  # Use full text if it's short
+
+                            print(f"Extracted technical description ({len(technical_description)} chars)")
+
+                            # Encode the technical description if we have a context model
+                            if context_sim_model and technical_description:
+                                tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                                print("Technical description encoded successfully")
+                        except Exception as e:
+                            print(f"Error extracting technical description: {e}")
+                            technical_description = None
+                        # Encode the technical description if available
+                        if technical_description:
+                            tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                            print("Technical description encoded successfully")
+
                     # Calculate similarity with existing titles
                     similar_titles = []
                     for _, row in df.iterrows():
                         # Skip if the title column value is empty
                         if not row[title_column] or pd.isna(row[title_column]):
                             continue
-                        
-                        similarity = float(util.pytorch_cos_sim(
+
+                        # Title similarity
+                        title_similarity = float(util.pytorch_cos_sim(
                             title_embedding.reshape(1, -1),
                             custom_similarity_model.encode(str(row[title_column]), convert_to_tensor=True).reshape(1, -1)
                         )[0][0] * 100)
-                        
+
+                        # Context similarity if we have technical description and abstract
+                        context_similarity = 0
+                        if technical_description and 'abstract' in row and row['abstract'] and context_sim_model:
+                            abstract_embedding = context_sim_model.encode(str(row['abstract']), convert_to_tensor=True)
+                            # Calculate raw cosine similarity
+                            raw_similarity = float(util.pytorch_cos_sim(
+                                tech_desc_embedding.reshape(1, -1),
+                                abstract_embedding.reshape(1, -1)
+                            )[0][0] * 100)
+                            # Apply scaling factor to reduce similarity (multiply by 0.6)
+                            # This reduces the similarity to reflect that we're only comparing parts of the papers
+                            context_similarity = raw_similarity * 0.6
+                            print(f"Context similarity for '{row[title_column][:30]}...': {context_similarity:.1f}% (raw: {raw_similarity:.1f}%)")
+
+                        # Combined similarity score (weighted average)
+                        combined_similarity = title_similarity * 0.6 + context_similarity * 0.4 if context_similarity > 0 else title_similarity
+
                         # Add to results if similarity is above threshold (e.g., 70%)
-                        if similarity >= 70.0:
+                        if combined_similarity >= 50.0 or title_similarity >= 50.0 or context_similarity >= 50.0:
                             similar_titles.append({
                                 'title': str(row[title_column]),
-                                'similarity': round(similarity, 1)
+                                'title_similarity': round(title_similarity, 1),
+                                'context_similarity': round(context_similarity, 1) if context_similarity > 0 else None,
+                                'combined_similarity': round(combined_similarity, 1),
+                                'abstract': str(row.get('abstract', ''))[:200] + '...' if 'abstract' in row else None
                             })
-                    
-                    # Sort by similarity (highest first) and limit to top 5
-                    similar_titles.sort(key=lambda x: x['similarity'], reverse=True)
+
+                    # Sort by combined similarity (highest first) and limit to top 5
+                    similar_titles.sort(key=lambda x: x['combined_similarity'], reverse=True)
                     return similar_titles[:5]
-                    
+
                 except Exception as e:
                     print(f"Error in check_title_similarity function: {e}")
                     traceback.print_exc()
                     return []
-                    
-            similar_titles = check_title_similarity(proposal_title)
-            print(f"Found {len(similar_titles)} similar titles")
-            
+
+            similar_titles_by_title = check_title_similarity(proposal_title, extracted_text)
+            print(f"Found {len(similar_titles_by_title)} similar titles")
+
         except Exception as e:
             print(f"Error checking title similarity: {e}")
             traceback.print_exc()
-            similar_titles = []
-        
+            similar_titles_by_title = []
+
         # --- Combine Results ---
         analysis_results = {
             'status': 'success',
             'speech_similarity': round(speech_similarity, 2) if speech_similarity is not None else None,
-            'speech_accuracy': round(speech_accuracy, 2) if speech_accuracy is not None else 80.0,  # Default if None
             'thesis_similarity': round(thesis_similarity, 2),
             'missed_keypoints': missed_keypoints,
             'added_keypoints': added_keypoints,
             'suggested_titles': suggested_titles,
             'keyword_analysis': keyword_info,
-            'similar_titles': similar_titles  # Add similar titles to results
+            'similar_titles_by_abstract': similar_titles_by_abstract,
+            'similar_titles_by_title': similar_titles_by_title
         }
 
         # --- Save to DB ---
@@ -957,64 +1595,10 @@ def analyze_content(file_id):
         return jsonify(fallback_results)
 
 
-# ✅ Load dataset and compute embeddings without modifying DataFrame
-def load_thesis_dataset_with_embeddings(model):
-    try:
-        dataset_path = os.path.join(BASE_PATH, 'PropEase_ Dataset.xlsx')
-        if not os.path.exists(dataset_path):
-            raise FileNotFoundError(f"Dataset not found: {dataset_path}")
+# This function has been moved to the top of the file
 
-        print(f"Loading dataset from: {dataset_path}")
-        df = pd.read_excel(dataset_path).fillna('')
-
-        df['content'] = (
-            df['Introduction'].astype(str) + ' ' +
-            df['Literature Review'].astype(str) + ' ' +
-            df['Method'].astype(str) + ' ' +
-            df['Result'].astype(str) + ' ' +
-            df['Discussion'].astype(str) + ' ' +
-            df['Conclusion'].astype(str)
-        )
-
-        print(f"Successfully loaded dataset with {len(df)} rows")
-        print("Encoding thesis content...")
-        embeddings = model.encode(df['content'].tolist(), convert_to_tensor=True)
-        return df, embeddings
-
-    except Exception as e:
-        print(f"❌ Error loading thesis dataset: {e}")
-        traceback.print_exc()
-        return pd.DataFrame(), None
-
-@app.route('/check_thesis_similarity', methods=['POST'])
-@login_required
-def check_thesis_similarity():
-    try:
-        data = request.json
-        new_title = data.get('title', '').strip()
-        new_content = data.get('content', '').strip()
-
-        if not new_title or not new_content:
-            return jsonify({
-                'status': 'error',
-                'message': 'Both title and content are required'
-            }), 400
-
-        # Use the improved similarity function
-        similar_theses = check_thesis_similarity(new_title, new_content)
-
-        return jsonify({
-            'status': 'success',
-            'similar_theses': similar_theses
-        })
-
-    except Exception as e:
-        print(f"Error in /check_thesis_similarity: {e}")
-        traceback.print_exc()
-        return jsonify({
-            'status': 'error',
-            'message': 'Internal server error'
-        }), 500
+# Original check_thesis_similarity route has been replaced by the enhanced version below
+# The implementation is now in the enhanced_context_similarity module
 
 @app.route('/save_speech_transcript', methods=['POST'])
 @login_required
@@ -1113,57 +1697,8 @@ def extract_keywords(text: str) -> list:
     print(f"Extracting keywords from text of length {len(text)}")
 
     try:
-        # Convert all TECH_KEYWORDS to lowercase for case-insensitive matching
-        tech_keywords_lower = {kw.lower() for kw in TECH_KEYWORDS}
-
-        # Split text into words and normalize
-        words = set(word.lower() for word in text.split())
-
-        # Find matching keywords
-        keywords = list(words.intersection(tech_keywords_lower))
-        print(f"Found {len(keywords)} tech keywords in text")
-
-        # If no tech keywords found, use KeyBERT to extract general keywords
-        if not keywords and kw_model:
-            try:
-                print("No tech keywords found, using KeyBERT")
-                # Truncate text if it's too long
-                if len(text) > 10000:
-                    print("Text too long, truncating to 10000 characters")
-                    text = text[:10000]
-
-                extracted = kw_model.extract_keywords(text, keyphrase_ngram_range=(1, 2), stop_words='english', top_n=5)
-                keywords = [kw[0] for kw in extracted]
-                print(f"KeyBERT extracted {len(keywords)} keywords")
-            except Exception as e:
-                print(f"KeyBERT extraction failed: {e}")
-
-        # Ensure we have at least some keywords
-        if not keywords:
-            print("No keywords found, using fallback method")
-            # Extract common words as fallback
-            common_words = ["system", "data", "analysis", "research", "technology", "application"]
-            for word in common_words:
-                if word.lower() in text.lower():
-                    keywords.append(word)
-
-            # If still no keywords, extract most frequent words
-            if not keywords:
-                print("No common words found, extracting most frequent words")
-                words = text.lower().split()
-                word_freq = {}
-                for word in words:
-                    if len(word) > 4 and word not in ['about', 'these', 'those', 'their', 'there']:
-                        word_freq[word] = word_freq.get(word, 0) + 1
-
-                # Get the most frequent words
-                sorted_words = sorted(word_freq.items(), key=lambda x: x[1], reverse=True)
-                keywords = [word for word, _ in sorted_words[:5]]
-
-        result = keywords[:5]  # Return up to 5 keywords
-        print(f"Final keywords: {result}")
-        return result
-
+        # Use the enhanced keyword extraction for better results
+        return extract_enhanced_keywords(text, top_n=5)
     except Exception as e:
         print(f"Error in extract_keywords: {e}")
         # Return default keywords in case of any error
@@ -1695,6 +2230,37 @@ def delete_account():
             conn.close()
         print("Database connection closed")  # Debug log
 
+@app.route('/check_thesis_similarity', methods=['POST'])
+@login_required
+def check_thesis_similarity_route():
+    try:
+        # Use the enhanced context similarity handler
+        data = request.json
+        result = check_thesis_similarity_route_handler(
+            data=data,
+            custom_similarity_model=custom_similarity_model,
+            context_sim_model=context_sim_model,
+            sentence_model=sentence_model,
+            extract_technical_description=extract_technical_description,
+            load_thesis_dataset_with_embeddings=load_thesis_dataset_with_embeddings,
+            BASE_PATH=BASE_PATH
+        )
+
+        # If the result is a tuple, it contains an error response
+        if isinstance(result, tuple):
+            return jsonify(result[0]), result[1]
+
+        # Otherwise, return the success response
+        return jsonify(result)
+
+    except Exception as e:
+        print(f"Error in check_thesis_similarity_route: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'status': 'error',
+            'message': f'Internal server error: {str(e)}'
+        }), 500
+
 if __name__ == "__main__":
     print(f"Current working directory: {os.getcwd()}")
     print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
@@ -1706,18 +2272,18 @@ def check_title_similarity_route():
     try:
         data = request.json
         title = data.get('title', '').strip()
-        
+
         if not title:
             return jsonify({
                 'status': 'error',
                 'message': 'Title is required'
             }), 400
-        
+
         # Define the check_title_similarity function
-        def check_title_similarity(title):
+        def check_title_similarity(title, proposal_text=None):
             try:
                 # Load thesis dataset
-                df = load_thesis_dataset_with_embeddings(custom_similarity_model)[0]
+                df, _ = load_thesis_dataset_with_embeddings(custom_similarity_model)
                 if df.empty:
                     print("Main dataset is empty, trying preprocessed CSV")
                     # Try to load preprocessed CSV as fallback
@@ -1728,14 +2294,14 @@ def check_title_similarity_route():
                     else:
                         print(f"Preprocessed dataset not found at {preprocessed_path}")
                         return []
-                
+
                 # Check if 'Title' column exists (case-insensitive check)
                 title_column = None
                 for col in df.columns:
                     if col.lower() == 'title':
                         title_column = col
                         break
-                
+
                 if not title_column:
                     print("No 'title' column found in dataset. Available columns:", df.columns.tolist())
                     # Try to use a different column that might contain titles
@@ -1745,50 +2311,274 @@ def check_title_similarity_route():
                             title_column = potential_col
                             print(f"Using '{title_column}' as title column")
                             break
-                        
+
                         if not title_column:
                             return []
-                
+
+                    print(f"Using '{title_column}' column for title similarity")
+
+                    # Encode the input title
+                    title_embedding = custom_similarity_model.encode(title, convert_to_tensor=True)
+
+                    # Extract technical description from proposal text if available
+                    technical_description = None
+                    tech_desc_embedding = None
+                    if proposal_text:
+                        # Extract technical description from concept paper
+                        try:
+                            # Look for sections specific to concept papers
+                            concept_paper_patterns = [
+                                r'(?i)technical\s+description.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)proposed\s+system.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)system\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)implementation\s+plan.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)technical\s+specifications.*?(?=\n\s*\n\s*[A-Z]|\Z)'
+                            ]
+
+                            for pattern in concept_paper_patterns:
+                                matches = re.search(pattern, proposal_text, re.DOTALL)
+                                if matches:
+                                    technical_description = matches.group(0).strip()
+                                    print(f"Found technical section using pattern: {pattern}")
+                                    break
+
+                            # If no specific section found, use the middle portion of the document
+                            # (concept papers often have technical details in the middle)
+                            if not technical_description:
+                                print("No specific technical section found, using middle portion of document")
+                                lines = proposal_text.split('\n')
+                                if len(lines) > 10:
+                                    start_idx = len(lines) // 3
+                                    end_idx = (len(lines) * 2) // 3
+                                    technical_description = '\n'.join(lines[start_idx:end_idx])
+                                else:
+                                    technical_description = proposal_text  # Use full text if it's short
+
+                            print(f"Extracted technical description ({len(technical_description)} chars)")
+
+                            # Encode the technical description if we have a context model
+                            if context_sim_model and technical_description:
+                                tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                                print("Technical description encoded successfully")
+                        except Exception as e:
+                            print(f"Error extracting technical description: {e}")
+                            technical_description = None
+                        # Encode the technical description if available
+                        if technical_description:
+                            tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                            print("Technical description encoded successfully")
+
+                    # Calculate similarity with existing titles
+                    similar_titles = []
+                    for _, row in df.iterrows():
+                        # Skip if the title column value is empty
+                        title_column = col
+                        break
+
+                if not title_column:
+                    print("No 'title' column found in dataset. Available columns:", df.columns.tolist())
+                    # Try to use a different column that might contain titles
+                    potential_title_columns = ['Title', 'title', 'TITLE', 'project_title', 'research_title', 'name']
+                    for potential_col in potential_title_columns:
+                        if potential_col in df.columns:
+                            title_column = potential_col
+                            print(f"Using '{title_column}' as title column")
+                            break
+
+                        if not title_column:
+                            return []
+
+                    print(f"Using '{title_column}' column for title similarity")
+
+                    # Encode the input title
+                    title_embedding = custom_similarity_model.encode(title, convert_to_tensor=True)
+
+                    # Extract technical description from proposal text if available
+                    technical_description = None
+                    tech_desc_embedding = None
+                    if proposal_text:
+                        # Extract technical description from concept paper
+                        try:
+                            # Look for sections specific to concept papers
+                            concept_paper_patterns = [
+                                r'(?i)technical\s+description.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)proposed\s+system.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)system\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)implementation\s+plan.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                                r'(?i)technical\s+specifications.*?(?=\n\s*\n\s*[A-Z]|\Z)'
+                            ]
+
+                            for pattern in concept_paper_patterns:
+                                matches = re.search(pattern, proposal_text, re.DOTALL)
+                                if matches:
+                                    technical_description = matches.group(0).strip()
+                                    print(f"Found technical section using pattern: {pattern}")
+                                    break
+
+                            # If no specific section found, use the middle portion of the document
+                            # (concept papers often have technical details in the middle)
+                            if not technical_description:
+                                print("No specific technical section found, using middle portion of document")
+                                lines = proposal_text.split('\n')
+                                if len(lines) > 10:
+                                    start_idx = len(lines) // 3
+                                    end_idx = (len(lines) * 2) // 3
+                                    technical_description = '\n'.join(lines[start_idx:end_idx])
+                                else:
+                                    technical_description = proposal_text  # Use full text if it's short
+
+                            print(f"Extracted technical description ({len(technical_description)} chars)")
+
+                            # Encode the technical description if we have a context model
+                            if context_sim_model and technical_description:
+                                tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                                print("Technical description encoded successfully")
+                        except Exception as e:
+                            print(f"Error extracting technical description: {e}")
+                            technical_description = None
+                        # Encode the technical description if available
+                        if technical_description:
+                            tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                            print("Technical description encoded successfully")
+
+                    # Calculate similarity with existing titles
+                    similar_titles = []
+                    for _, row in df.iterrows():
+                        # Skip if the title column value is empty
+                        title_column = col
+                        break
+
+                if not title_column:
+                    print("No 'title' column found in dataset. Available columns:", df.columns.tolist())
+                    # Try to use a different column that might contain titles
+                    potential_title_columns = ['Title', 'title', 'TITLE', 'project_title', 'research_title', 'name']
+                    for potential_col in potential_title_columns:
+                        if potential_col in df.columns:
+                            title_column = potential_col
+                            print(f"Using '{title_column}' as title column")
+                            break
+
+                        if not title_column:
+                            return []
+
                 print(f"Using '{title_column}' column for title similarity")
-                
+
                 # Encode the input title
                 title_embedding = custom_similarity_model.encode(title, convert_to_tensor=True)
-                
+
+                # Extract technical description from proposal text if available
+                technical_description = None
+                tech_desc_embedding = None
+                if proposal_text:
+                    # Extract technical description from concept paper
+                    try:
+                        # Look for sections specific to concept papers
+                        concept_paper_patterns = [
+                            r'(?i)technical\s+description.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                            r'(?i)methodology.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                            r'(?i)proposed\s+system.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                            r'(?i)system\s+architecture.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                            r'(?i)implementation\s+plan.*?(?=\n\s*\n\s*[A-Z]|\Z)',
+                            r'(?i)technical\s+specifications.*?(?=\n\s*\n\s*[A-Z]|\Z)'
+                        ]
+
+                        for pattern in concept_paper_patterns:
+                            matches = re.search(pattern, proposal_text, re.DOTALL)
+                            if matches:
+                                technical_description = matches.group(0).strip()
+                                print(f"Found technical section using pattern: {pattern}")
+                                break
+
+                        # If no specific section found, use the middle portion of the document
+                        # (concept papers often have technical details in the middle)
+                        if not technical_description:
+                            print("No specific technical section found, using middle portion of document")
+                            lines = proposal_text.split('\n')
+                            if len(lines) > 10:
+                                start_idx = len(lines) // 3
+                                end_idx = (len(lines) * 2) // 3
+                                technical_description = '\n'.join(lines[start_idx:end_idx])
+                            else:
+                                technical_description = proposal_text  # Use full text if it's short
+
+                        print(f"Extracted technical description ({len(technical_description)} chars)")
+
+                        # Encode the technical description if we have a context model
+                        if context_sim_model and technical_description:
+                            tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                            print("Technical description encoded successfully")
+                    except Exception as e:
+                        print(f"Error extracting technical description: {e}")
+                        technical_description = None
+                    # Encode the technical description if available
+                    if technical_description:
+                        tech_desc_embedding = context_sim_model.encode(technical_description, convert_to_tensor=True)
+                        print("Technical description encoded successfully")
+
                 # Calculate similarity with existing titles
                 similar_titles = []
                 for _, row in df.iterrows():
                     # Skip if the title column value is empty
                     if not row[title_column] or pd.isna(row[title_column]):
                         continue
-                    
-                    similarity = float(util.pytorch_cos_sim(
+
+                    # Title similarity
+                    title_similarity = float(util.pytorch_cos_sim(
                         title_embedding.reshape(1, -1),
                         custom_similarity_model.encode(str(row[title_column]), convert_to_tensor=True).reshape(1, -1)
                     )[0][0] * 100)
-                    
-                    # Add to results if similarity is above threshold (e.g., 70%)
-                    if similarity >= 70.0:
+
+                    # Context similarity if we have technical description and abstract
+                    context_similarity = 0
+                    if technical_description and 'abstract' in row and row['abstract'] and context_sim_model:
+                        abstract = str(row['abstract'])
+                        # Skip very short abstracts
+                        if len(abstract.strip()) >= 10:
+                            try:
+                                abstract_embedding = context_sim_model.encode(abstract, convert_to_tensor=True)
+                                context_similarity = float(util.pytorch_cos_sim(
+                                    tech_desc_embedding.reshape(1, -1),
+                                    abstract_embedding.reshape(1, -1)
+                                )[0][0] * 100)
+                                print(f"Context similarity for '{row[title_column][:30]}...': {context_similarity:.1f}%")
+                            except Exception as e:
+                                print(f"Error encoding abstract: {e}")
+                                context_similarity = 0
+
+                    # Combined similarity score (weighted average)
+                    # Give more weight to context similarity if it's available
+                    combined_similarity = title_similarity * 0.4 + context_similarity * 0.6 if context_similarity > 0 else title_similarity
+
+                    # Add to results if similarity is above threshold - LOWERED FOR TESTING
+                    if combined_similarity >= 20.0 or title_similarity >= 30.0 or context_similarity >= 20.0:
                         similar_titles.append({
                             'title': str(row[title_column]),
-                            'similarity': round(similarity, 1)
+                            'title_similarity': round(title_similarity, 1),
+                            'context_similarity': round(context_similarity, 1) if context_similarity > 0 else None,
+                            'combined_similarity': round(combined_similarity, 1),
+                            'abstract': str(row.get('abstract', ''))[:200] + '...' if 'abstract' in row else None
                         })
-                
-                # Sort by similarity (highest first) and limit to top 5
-                similar_titles.sort(key=lambda x: x['similarity'], reverse=True)
+
+                # Sort by combined similarity (highest first) and limit to top 5
+                similar_titles.sort(key=lambda x: x['combined_similarity'], reverse=True)
                 return similar_titles[:5]
-                
+
             except Exception as e:
                 print(f"Error in check_title_similarity function: {e}")
                 traceback.print_exc()
                 return []
-        
+
+        # Call the function to get similar titles
         similar_titles = check_title_similarity(title)
-        
+
+        # Return the results
         return jsonify({
             'status': 'success',
             'similar_titles': similar_titles
         })
-        
+
     except Exception as e:
         print(f"Error in /check_title_similarity route: {e}")
         traceback.print_exc()
