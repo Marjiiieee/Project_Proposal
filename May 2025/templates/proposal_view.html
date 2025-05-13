@@ -431,9 +431,9 @@
         .progress-bar-fill {
             display: block !important; /* Force display */
             width: 0%;
-            min-width: 5px; 
+            min-width: 5px;
             height: 100%;
-            background-color: #d8b4f8; 
+            background-color: #d8b4f8;
             transition: width 0.3s ease-in-out;
         }
         .similarity-score {
@@ -454,9 +454,232 @@
             font-family: 'Courier New', Courier, monospace;
         }
         #discrepancyList li {
-            margin-bottom: 8px;
+            margin-bottom: 15px;
             line-height: 1.5;
             font-family: 'Comfortaa', sans-serif;
+            list-style-type: none;
+        }
+
+        .discrepancy-container {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+        }
+
+        .discrepancy-block-header {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
+        }
+
+        .discrepancy-combined-list {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .discrepancy-item {
+            background-color: #ffffff;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            margin-bottom: 10px;
+            border-left: 3px solid #d8b4f8;
+        }
+
+        .discrepancy-item:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .discrepancy-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .discrepancy-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+
+        .discrepancy-type {
+            color: #51087e;
+            margin-right: 8px;
+        }
+
+        .discrepancy-keyword {
+            background-color: #d8b4f8;
+            color: #51087e;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .discrepancy-context {
+            margin-left: 30px;
+            padding: 8px 12px;
+            background-color: #f0f0f0;
+            border-left: 3px solid #d8b4f8;
+            border-radius: 0 4px 4px 0;
+            font-style: italic;
+            color: #555;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        .similar-titles-list {
+            padding-left: 0;
+            margin-top: 10px;
+        }
+
+        .similar-title-item {
+            padding: 12px;
+            margin-bottom: 15px;
+            background-color: #f8f9fa;
+            border-left: 3px solid #d8b4f8;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .similar-title-item:hover {
+            background-color: #f0f0f0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .similar-title-header {
+            font-weight: bold;
+            color: #51087e;
+            margin-bottom: 8px;
+            font-size: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .similar-title-score {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #d8b4f8;
+            color: #51087e;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .similar-paragraph {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            border-left: 2px solid #d8b4f8;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .similar-paragraph-header {
+            font-weight: bold;
+            color: #51087e;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .similar-abstract {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f0f8ff; /* Light blue background to differentiate from paragraph */
+            border-radius: 4px;
+            border-left: 2px solid #9370db; /* Purple border */
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .similar-abstract-header {
+            font-weight: bold;
+            color: #51087e;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+
+        .abstract-similarity {
+            margin-top: 5px;
+            text-align: right;
+            font-size: 12px;
+            color: #6a1b9a;
+            font-style: italic;
+        }
+
+        .analysis-section {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+        }
+
+        .analysis-section h5 {
+            color: #6a1b9a;
+            margin-bottom: 8px;
+        }
+
+        .analysis-section p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 10px;
+        }
+
+        /* Context similarity styles */
+        .context-similarity-list {
+            margin-top: 10px;
+        }
+
+        .context-similarity-item {
+            padding: 12px;
+            margin-bottom: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #d8b4f8;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .context-similarity-item:hover {
+            background-color: #f0f0f0;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+
+        .context-similarity-title {
+            font-weight: bold;
+            color: #51087e;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .context-similarity-score {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #d8b4f8;
+            color: #51087e;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+
+        .context-similarity-abstract {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.4;
+            margin-top: 8px;
+            font-style: italic;
+            padding: 8px;
+            background-color: #fff;
+            border-radius: 4px;
+            border-left: 2px solid #ccc;
         }
     </style>
 </head>
@@ -506,7 +729,7 @@
 
         <button class="results-button" onclick="togglePopup()" title="Results">
             <i class="fas fa-arrow-right"></i>
-        </button> 
+        </button>
 
         <div id="popup" class="pop-up" style="display: none;">
             <div class="popup-content">
@@ -526,13 +749,6 @@
                             <h5>Content Analysis:</h5>
                             <div class="progress-bar-group">
                                 <div style="margin-bottom: 20px;">
-                                    <h5>Speech to Text Accuracy</h5>
-                                    <div class="progress-bar-container">
-                                        <div class="progress-bar-fill" id="progressSpeechAccuracy" style="width: 0%;"></div>
-                                    </div>
-                                    <div class="similarity-score" id="speechAccuracyLabel">0%</div>
-                                    
-
                                     <h5>Proposal and Speech Similarity</h5>
                                     <div class="progress-bar-container">
                                         <div class="progress-bar-fill" id="progressSpeech" style="width: 0%;"></div>
@@ -540,15 +756,20 @@
                                     <div class="similarity-score" id="speechSimilarityLabel">0%</div>
 
                                     <h5>Proposal and Existing Papers Similarity</h5>
-                                    <div class="progress-bar-container">
-                                        <div class="progress-bar-fill" id="progressThesis" style="width: 0%;"></div>
-                                    </div>
-                                    <div class="similarity-score" id="thesisSimilarityLabel">0%</div>
-                                    
-                                    <!-- Add similar titles section -->
-                                    <div id="similarTitlesSection" style="margin-top: 10px; display: none;">
-                                        <h6 style="font-size: 14px; color: #51087e; margin-bottom: 5px;">Similar Existing Titles:</h6>
-                                        <ul id="similarTitlesList" style="padding-left: 20px; color: #51087e; font-size: 13px;"></ul>
+
+                                    <!-- Similar titles section -->
+                                    <div id="similarTitlesSection" class="analysis-section" style="display: none;">
+                                        <h5>Similar Existing Theses</h5>
+                                        <p>Your proposal shows contextual similarity to these existing theses:</p>
+                                        <div id="similarTitlesList" class="similar-titles-list">
+                                            <!-- Similar titles will be inserted here with their contextually similar paragraphs -->
+                                            <!-- Each entry will show:
+                                                 1. The thesis title
+                                                 2. The similarity percentage
+                                                 3. The specific paragraph from your technical description that was similar
+                                                 4. The specific sentence from the thesis abstract that was similar
+                                            -->
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -556,9 +777,9 @@
 
                         <div class="analysis-item" id="discrepancyViewer">
                             <h5>Key Discrepancies:</h5>
-                            <ul id="discrepancyList" style="padding-left: 20px; color: #51087e; font-size: 14px;"></ul>
+                            <ul id="discrepancyList" style="padding-left: 0; color: #51087e; font-size: 14px; margin: 0;"></ul>
                         </div>
-            
+
                         <div class="analysis-item" id="titleRecommendationsSection">
                             <h5>Title Recommendations:</h5>
                         </div>
@@ -573,97 +794,13 @@
     <script src="/static/js/analysis.js"></script>
 
     <script>
-        // This script runs immediately when the page loads
+        // This script runs when the page loads, but doesn't automatically display results
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("Force display script running");
+            console.log("DOM loaded - results will be displayed only when the result button is clicked");
 
-            // Get the saved analysis data
-            try {
-                const analysisJsonElement = document.getElementById('analysis-json');
-                if (analysisJsonElement) {
-                    const analysisJson = analysisJsonElement.textContent.trim();
-                    if (analysisJson && analysisJson !== "null") {
-                        console.log("Found saved analysis data:", analysisJson);
-                        const analysisData = JSON.parse(analysisJson);
-
-                        // Wait a short time to ensure DOM is fully loaded
-                        setTimeout(function() {
-                            console.log("Forcing display of saved analysis data");
-
-                            // Force display speech similarity
-                            const speechProgressBar = document.getElementById('progressSpeech');
-                            const speechLabel = document.getElementById('speechSimilarityLabel');
-                            if (speechProgressBar && speechLabel && analysisData.speech_similarity !== undefined) {
-                                speechProgressBar.setAttribute('style', `width: ${analysisData.speech_similarity}% !important; display: block !important; background-color: #d8b4f8 !important;`);
-                                speechLabel.textContent = `${Math.round(analysisData.speech_similarity)}%`;
-                                console.log("Forced display of speech similarity:", analysisData.speech_similarity);
-                            }
-
-                            // Force display thesis similarity if it exists
-                            const thesisProgressBar = document.getElementById('progressThesis');
-                            const thesisLabel = document.getElementById('thesisSimilarityLabel');
-                            if (thesisProgressBar && thesisLabel && analysisData.thesis_similarity !== undefined) {
-                                thesisProgressBar.setAttribute('style', `width: ${analysisData.thesis_similarity}% !important; display: block !important; background-color: #d8b4f8 !important;`);
-                                thesisLabel.textContent = `${Math.round(analysisData.thesis_similarity)}%`;
-                                console.log("Forced display of thesis similarity:", analysisData.thesis_similarity);
-                            }
-
-                            // Force display discrepancies
-                            const discrepancyList = document.getElementById('discrepancyList');
-                            if (discrepancyList && analysisData.missed_keypoints && analysisData.added_keypoints) {
-                                discrepancyList.innerHTML = '';
-
-                                // Add missed keypoints
-                                analysisData.missed_keypoints.forEach(point => {
-                                    const li = document.createElement('li');
-                                    li.innerHTML = `🔻 <strong>Missing in speech:</strong> ${point}`;
-                                    discrepancyList.appendChild(li);
-                                });
-
-                                // Add extra keypoints
-                                analysisData.added_keypoints.forEach(point => {
-                                    const li = document.createElement('li');
-                                    li.innerHTML = `🔺 <strong>Extra (not in paper):</strong> ${point}`;
-                                    discrepancyList.appendChild(li);
-                                });
-
-                                console.log("Forced display of discrepancies");
-                            }
-                            // Force display titles
-                            const titleRecommendationsSection = document.getElementById('titleRecommendationsSection');
-                            if (titleRecommendationsSection && analysisData.suggested_titles) {
-                            titleRecommendationsSection.innerHTML = '<h5>Title Recommendations:</h5>';
-
-                            //Different reasons for each title
-                            // const reasons = [
-                            //     "This title highlights the main focus and technical aspects of your research.",
-                            //     "This title emphasizes the innovative approach and potential impact of your work.",
-                            //     "This title presents your research in a professional academic context with clear focus.",
-                            //     "This title showcases the problem-solving aspects and practical applications of your work.",
-                            //     "This title emphasizes the methodological contributions of your research."
-                            // ];
-
-                            // analysisData.suggested_titles.forEach((title, index) => {
-                            //     const div = document.createElement('div');
-                            //     div.className = 'recommendation-item';
-                            //     div.innerHTML = `
-                            //         <div class="recommendation-text">${title}</div>
-                            //         <div class="recommendation-reason">
-                            //             ${reasons[index % reasons.length]}
-                            //         </div>
-                            //     `;
-                            //     titleRecommendationsSection.appendChild(div);
-                            // });
-                                console.log("Forced display of titles");
-                            }
-                        }, 500); // Wait 500ms to ensure DOM is ready
-                    } else {
-                        console.log("No saved analysis data found");
-                    }
-                }
-            } catch (error) {
-                console.error("Error in force display script:", error);
-            }
+            // We don't automatically load or display results anymore
+            // Results will only be loaded and displayed when the user clicks the results button
+            console.log("Waiting for user to click the results button to load analysis data");
         });
 
         // 🔁 Global Variables for Speech Recognition
@@ -755,7 +892,7 @@
                 }
             }
         }
-        
+
         function toggleMenu() {
             const menu = document.getElementById("menu");
             const body = document.body;
@@ -917,17 +1054,99 @@
             // Function to show the popup
             function showPopup() {
                 console.log("showPopup called");
+
+                // Show loading indicator
+                const loadingDiv = document.createElement('div');
+                loadingDiv.id = 'analysis-loading-indicator';
+                loadingDiv.style.position = 'fixed';
+                loadingDiv.style.top = '50%';
+                loadingDiv.style.left = '50%';
+                loadingDiv.style.transform = 'translate(-50%, -50%)';
+                loadingDiv.style.background = 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)';
+                loadingDiv.style.color = '#4a0072';
+                loadingDiv.style.padding = '25px 30px';
+                loadingDiv.style.borderRadius = '20px';
+                loadingDiv.style.boxShadow = '0 8px 30px rgba(128, 90, 213, 0.3)';
+                loadingDiv.style.zIndex = '9999';
+                loadingDiv.style.fontFamily = '"Comfortaa", sans-serif';
+                loadingDiv.innerHTML = `
+                    <div style="text-align: center;">
+                        <div style="margin-bottom: 12px;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 26px; color: #6a1b9a;"></i>
+                        </div>
+                        <div>
+                            <strong style="font-size: 16px;">Analyzing your document...</strong><br>
+                            <small style="color: #4a0072;">Please wait while we process your content.</small>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(loadingDiv);
+
+                // Show the popup
                 popup.style.display = 'flex';
-                
-                // Ensure these functions exist before calling
-                if (typeof analyzePDFContent === 'function') {
-                    console.log("Calling analyzePDFContent");
-                    analyzePDFContent();
-                }
-                
-                if (typeof generateTitles === 'function') {
-                    console.log("Calling generateTitles");
-                    generateTitles();
+
+                // Always perform a fresh analysis when the Results button is clicked
+                if (typeof window.analyzePDFContent === 'function') {
+                    console.log("Calling analyzePDFContent for fresh analysis");
+
+                    // Create a promise for each operation
+                    let analysisPromise = window.analyzePDFContent();
+                    let titlesPromise = null;
+                    let similarityPromise = null;
+
+                    // Chain the promises
+                    analysisPromise
+                        .then(() => {
+                            console.log("Analysis complete, starting title generation");
+
+                            // Generate titles after analysis is complete
+                            if (typeof window.generateTitles === 'function') {
+                                console.log("Calling generateTitles");
+                                titlesPromise = window.generateTitles();
+                                return titlesPromise;
+                            }
+                            return null;
+                        })
+                        .then(() => {
+                            console.log("Title generation complete, checking thesis similarity");
+
+                            // Check context similarity
+                            const extractedText = document.querySelector('#extracted-text')?.innerText || "";
+                            if (extractedText && typeof checkThesisSimilarity === 'function') {
+                                console.log("Checking thesis context similarity");
+                                similarityPromise = checkThesisSimilarity(extractedText);
+                                return similarityPromise;
+                            }
+                            return null;
+                        })
+                        .then((similarTheses) => {
+                            if (similarTheses && typeof displayContextSimilarity === 'function') {
+                                console.log("Displaying context similarity results");
+                                displayContextSimilarity(similarTheses);
+                            }
+
+                            // Remove loading indicator after all operations are complete
+                            console.log("All operations complete, removing loading indicator");
+                            const loadingIndicator = document.getElementById('analysis-loading-indicator');
+                            if (loadingIndicator) {
+                                loadingIndicator.remove();
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error during analysis process:", error);
+                            // Remove loading indicator on error
+                            const loadingIndicator = document.getElementById('analysis-loading-indicator');
+                            if (loadingIndicator) {
+                                loadingIndicator.remove();
+                            }
+                        });
+                } else {
+                    console.error("analyzePDFContent function not available");
+                    // Remove loading indicator if function not available
+                    const loadingIndicator = document.getElementById('analysis-loading-indicator');
+                    if (loadingIndicator) {
+                        loadingIndicator.remove();
+                    }
                 }
             }
 
@@ -970,119 +1189,14 @@
             window.togglePopup = showPopup;
             window.closePopup = hidePopup;
         });
-        // This script runs immediately to force display of results
+        // This script has been disabled to prevent automatic loading of results
+        // Results will only be loaded when the user clicks the Results button
         (function() {
-            console.log("Immediate force display script running");
+            console.log("Automatic results display has been disabled");
 
-            // Function to force display results
-            function forceDisplayResults() {
-                console.log("Force display function called");
-
-                try {
-                    // Get the saved analysis data
-                    const analysisJsonElement = document.getElementById('analysis-json');
-                    if (analysisJsonElement) {
-                        const analysisJson = analysisJsonElement.textContent.trim();
-                        if (analysisJson && analysisJson !== "null") {
-                            console.log("Found saved analysis data for immediate display");
-                            const analysisData = JSON.parse(analysisJson);
-
-                            // Force display speech accuracy
-                            const speechAccuracyBar = document.getElementById('progressSpeechAccuracy');
-                            const speechAccuracyLabel = document.getElementById('speechAccuracyLabel');
-                            if (speechAccuracyBar && speechAccuracyLabel && analysisData.speech_accuracy !== undefined) {
-                                speechAccuracyBar.setAttribute('style', `width: ${analysisData.speech_accuracy}% !important; display: block !important; background-color: #a5e1a5 !important;`);
-                                speechAccuracyLabel.textContent = `${Math.round(analysisData.speech_accuracy)}%`;
-                                console.log("Immediate forced display of speech accuracy:", analysisData.speech_accuracy);
-                            }
-
-                            // Force display speech similarity
-                            const speechProgressBar = document.getElementById('progressSpeech');
-                            const speechLabel = document.getElementById('speechSimilarityLabel');
-                            if (speechProgressBar && speechLabel && analysisData.speech_similarity !== undefined) {
-                                speechProgressBar.setAttribute('style', `width: ${analysisData.speech_similarity}% !important; display: block !important; background-color: #d8b4f8 !important;`);
-                                speechLabel.textContent = `${Math.round(analysisData.speech_similarity)}%`;
-                                console.log("Immediate forced display of speech similarity:", analysisData.speech_similarity);
-                            }
-
-                            // Force display thesis similarity if it exists
-                            const thesisProgressBar = document.getElementById('progressThesis');
-                            const thesisLabel = document.getElementById('thesisSimilarityLabel');
-                            if (thesisProgressBar && thesisLabel && analysisData.thesis_similarity !== undefined) {
-                                thesisProgressBar.setAttribute('style', `width: ${analysisData.thesis_similarity}% !important; display: block !important; background-color: #d8b4f8 !important;`);
-                                thesisLabel.textContent = `${Math.round(analysisData.thesis_similarity)}%`;
-                                console.log("Immediate forced display of thesis similarity:", analysisData.thesis_similarity);
-                            }
-
-                            // Force display discrepancies
-                            const discrepancyList = document.getElementById('discrepancyList');
-                            if (discrepancyList && analysisData.missed_keypoints && analysisData.added_keypoints) {
-                                discrepancyList.innerHTML = '';
-
-                                // Add missed keypoints
-                                analysisData.missed_keypoints.forEach(point => {
-                                    const li = document.createElement('li');
-                                    li.innerHTML = `🔻 <strong>Missing in speech:</strong> ${point}`;
-                                    discrepancyList.appendChild(li);
-                                });
-
-                                // Add extra keypoints
-                                analysisData.added_keypoints.forEach(point => {
-                                    const li = document.createElement('li');
-                                    li.innerHTML = `🔺 <strong>Extra (not in paper):</strong> ${point}`;
-                                    discrepancyList.appendChild(li);
-                                });
-
-                                console.log("Immediate forced display of discrepancies");
-                            }
-
-                            // Force display titles
-                            const titleRecommendationsSection = document.getElementById('titleRecommendationsSection');
-                            if (titleRecommendationsSection && analysisData.suggested_titles) {
-                                titleRecommendationsSection.innerHTML = '<h5>Title Recommendations:</h5>';
-
-                                // Different reasons for each title
-                                const reasons = [
-                                    "This title highlights the main focus and technical aspects of your research.",
-                                    "This title emphasizes the innovative approach and potential impact of your work.",
-                                    "This title presents your research in a professional academic context with clear focus.",
-                                    "This title showcases the problem-solving aspects and practical applications of your work.",
-                                    "This title emphasizes the methodological contributions of your research."
-                                ];
-
-                                analysisData.suggested_titles.forEach((title, index) => {
-                                    const div = document.createElement('div');
-                                    div.className = 'recommendation-item';
-                                    div.innerHTML = `
-                                        <div class="recommendation-text">${title}</div>
-                                        <div class="recommendation-reason">
-                                            ${reasons[index % reasons.length]}
-                                        </div>
-                                    `;
-                                    titleRecommendationsSection.appendChild(div);
-                                });
-
-                                console.log("Immediate forced display of titles");
-                            }
-                        } else {
-                            console.log("No saved analysis data found for immediate display");
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error in immediate force display script:", error);
-                }
-            }
-            // Call immediately
-            forceDisplayResults();
-
-            // Also call when DOM is loaded
-            document.addEventListener('DOMContentLoaded', forceDisplayResults);
-
-            // Also call when window is fully loaded
-            window.addEventListener('load', forceDisplayResults);
-
-            // Also call periodically
-            setInterval(forceDisplayResults, 2000);
+            // We don't automatically analyze or display results
+            // Analysis is only performed when the user clicks the Results button
+            console.log("Waiting for user to click Results button to load and display results");
         })();
         // Wait for the page to fully load
         window.addEventListener('load', function() {
@@ -1238,13 +1352,13 @@
             // Function to generate titles
             async function generateTitles() {
                 console.log("Starting title generation...");
-                
+
                 // Get the text content
                 const extractedText = document.querySelector('#extracted-text')?.innerText;
-                
+
                 // Debug log to check content
                 console.log("Extracted text length:", extractedText?.length);
-                
+
                 if (!extractedText) {
                     console.error("No extracted text found!");
                     return;
@@ -1281,6 +1395,6 @@
     <script nomodule src="https://unpkg.com/ionicons@5.4.0/dist/ionicons/ionicons.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    
+
 </body>
 </html>
